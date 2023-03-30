@@ -3,7 +3,7 @@
 CAPABILITY_ID = "jclmnop:sleepy"
 NAME = "sleepy"
 VENDOR = "jclmnop"
-PROJECT = sleepy
+PROJECT = wasmcloud-provider-sleepy
 VERSION = 0.1.0
 REVISION = 0
 

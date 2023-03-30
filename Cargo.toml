@@ -18,5 +18,5 @@ wasmcloud-interface-sleepy = "0.1.0"
 wasmcloud-test-util = "0.7.0"
 
 [[bin]]
-name = "sleepy"
+name = "wasmcloud-provider-sleepy"
 path = "src/main.rs"
