@@ -2,7 +2,7 @@
 
 # name of compiled binary (usually project name unless overridden in [[bin]]
 # Required
-bin_path = "target/debug/sleepy"
+bin_path = "target/debug/wasmcloud-provider-sleepy"
 
 # set RUST_LOG environment variable (default "info")
 rust_log = "debug"

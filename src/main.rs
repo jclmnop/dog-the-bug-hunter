@@ -55,30 +55,9 @@ impl Sleepy for SleepyProvider {
         sleep(sleep_duration).await;
         Ok(())
     }
+
+    async fn now(&self, _ctx: &Context) -> RpcResult<Timestamp> {
+        Ok(Timestamp::now())
+    }
 }
 
-// /// Handle Factorial methods
-// #[async_trait]
-// impl Factorial for sleepyProvider {
-//     /// accepts a number and calculates its factorial
-//     async fn calculate(&self, _ctx: &Context, req: &u32) -> RpcResult<u64> {
-//         debug!("processing request calculate ({})", *req);
-//         Ok(n_factorial(*req))
-//     }
-// }
-//
-// /// calculate n factorial
-// fn n_factorial(n: u32) -> u64 {
-//     match n {
-//         0 => 1,
-//         1 => 1,
-//         _ => {
-//             let mut result = 1u64;
-//             // add 1 because rust ranges exclude upper bound
-//             for v in 2..(n + 1) {
-//                 result *= v as u64;
-//             }
-//             result
-//         }
-//     }
-// }

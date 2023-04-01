@@ -3,12 +3,7 @@ use std::time::{Duration, SystemTime};
 use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
 use wasmbus_rpc::Timestamp;
-use wasmcloud_test_util::{
-    check,
-    cli::print_test_results,
-    provider_test::test_provider,
-    testing::{TestOptions, TestResult},
-};
+use wasmcloud_test_util::{check, check_eq, cli::print_test_results, provider_test::test_provider, testing::{TestOptions, TestResult}};
 #[allow(unused_imports)]
 use wasmcloud_test_util::{run_selected, run_selected_spawn};
 use wasmcloud_interface_sleepy::{Sleepy, SleepySender};
@@ -16,7 +11,7 @@ use wasmcloud_interface_sleepy::{Sleepy, SleepySender};
 #[tokio::test]
 async fn run_all() {
     let opts = TestOptions::default();
-    let res = run_selected_spawn!(&opts, health_check, sleep, sleep_until);
+    let res = run_selected_spawn!(&opts, test_health_check, test_sleep, test_sleep_until, test_now);
     print_test_results(&res);
 
     let passed = res.iter().filter(|tr| tr.passed).count();
@@ -29,7 +24,7 @@ async fn run_all() {
 }
 
 /// test that health check returns healthy
-async fn health_check(_opt: &TestOptions) -> RpcResult<()> {
+async fn test_health_check(_opt: &TestOptions) -> RpcResult<()> {
     let prov = test_provider().await;
 
     // health check
@@ -39,7 +34,7 @@ async fn health_check(_opt: &TestOptions) -> RpcResult<()> {
 }
 
 /// test that `SleepySender::sleep()` works correctly
-async fn sleep(_opt: &TestOptions) -> RpcResult<()> {
+async fn test_sleep(_opt: &TestOptions) -> RpcResult<()> {
     let prov = test_provider().await;
 
     let client = SleepySender::via(prov);
@@ -50,16 +45,15 @@ async fn sleep(_opt: &TestOptions) -> RpcResult<()> {
     let _ = client.sleep(&ctx, &sleep_time_ms).await?;
     let actual_time_slept = start.elapsed();
 
-    assert!(
-        actual_time_slept >= Duration::from_millis(sleep_time_ms as u64),
-        "Expected: {}, Actual: {}", sleep_time_ms, actual_time_slept.as_millis()
-    );
+    check!(
+        actual_time_slept >= Duration::from_millis(sleep_time_ms as u64)
+    )?;
 
     Ok(())
 }
 
 /// test that `SleepySender::sleep_until()` works correctly
-async fn sleep_until(_opt: &TestOptions) -> RpcResult<()> {
+async fn test_sleep_until(_opt: &TestOptions) -> RpcResult<()> {
     let prov = test_provider().await;
 
     let client = SleepySender::via(prov);
@@ -72,10 +66,27 @@ async fn sleep_until(_opt: &TestOptions) -> RpcResult<()> {
     let _ = client.sleep_until(&ctx, &sleep_until).await?;
     let actual_time_slept = start.elapsed();
 
-    assert!(
-        actual_time_slept >= sleep_duration,
-        "Expected: {}, Actual: {}", sleep_duration.as_millis(), actual_time_slept.as_millis()
-    );
+    check!(
+        actual_time_slept >= sleep_duration
+    )?;
+
+    Ok(())
+}
+
+/// test that `SleepySender::now()` works correctly
+async fn test_now(_opt: &TestOptions) -> RpcResult<()> {
+    let prov = test_provider().await;
+
+    let client = SleepySender::via(prov);
+    let ctx = Context::default();
+
+    let start = client.now(&ctx).await?;
+    let sleep_duration = Duration::from_millis(100);
+    tokio::time::sleep(sleep_duration).await;
+    let end = client.now(&ctx).await?;
+
+    // check that the difference between the start and end times is within 10ms of the sleep duration
+    check!((end.as_nanos() - start.as_nanos()).abs_diff(sleep_duration.as_nanos()) < 10_000_000)?;
 
     Ok(())
 }
