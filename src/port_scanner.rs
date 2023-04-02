@@ -6,8 +6,10 @@ use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tracing::log::info;
+use tracing::instrument;
 use wasmcloud_interface_endpoint_enumerator::{Port, Subdomain};
 
+#[instrument(level = "debug", name = "scan_ports", fields(subdomain = %subdomain.subdomain))]
 pub async fn scan_ports(
     concurrency: usize,
     mut subdomain: Subdomain,

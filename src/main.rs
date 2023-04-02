@@ -10,7 +10,7 @@ use crate::subdomains::enumerate_subdomains;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
-use tracing::{error, info};
+use tracing::{error, info, instrument};
 use wasmbus_rpc::common::Context;
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
@@ -42,12 +42,14 @@ impl ProviderHandler for EndpointEnumeratorProvider {}
 
 #[async_trait]
 impl EndpointEnumerator for EndpointEnumeratorProvider {
+    #[instrument(name = "enumerate_endpoints", skip(self, _ctx, url))]
     async fn enumerate_endpoints<TS: ToString + ?Sized + Sync>(
         &self,
-        ctx: &Context,
+        _ctx: &Context,
         url: &TS,
     ) -> RpcResult<EnumerateEndpointsResponse> {
         let url = &*url.to_string();
+        info!("Enumerating endpoints for {}", url);
         let subdomains = match self.enumerate_subdomains(url).await {
             Ok(subdomains) => subdomains,
             Err(e) => {
@@ -86,6 +88,8 @@ impl EndpointEnumerator for EndpointEnumeratorProvider {
 impl EndpointEnumeratorProvider {
     pub const DNS_CONCURRENCY: usize = 100;
     pub const PORT_CONCURRENCY: usize = 100;
+
+    #[instrument(name = "enumerate_subdomains", skip(self))]
     async fn enumerate_subdomains(&self, url: &str) -> Result<Subdomains> {
         info!("Enumerating subdomains for {}", url);
         let mut subdomains = enumerate_subdomains(url).await?;
@@ -99,6 +103,7 @@ impl EndpointEnumeratorProvider {
         Ok(subdomains)
     }
 
+    #[instrument(name = "filter_unresolvable_domains", skip(self, subdomains))]
     async fn filter_unresolvable_domains(
         &self,
         subdomains: Subdomains,
@@ -113,6 +118,7 @@ impl EndpointEnumeratorProvider {
             .await)
     }
 
+    #[instrument(name = "scan_ports_for_subdomains", skip(self, subdomains))]
     async fn scan_ports_for_subdomains(
         &self,
         subdomains: Subdomains,
