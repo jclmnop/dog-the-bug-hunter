@@ -1,0 +1,123 @@
+mod utils;
+
+use std::ops::Add;
+use std::time::{Duration, SystemTime};
+use tracing::info;
+use tracing::log::log;
+use wasmbus_rpc::error::RpcResult;
+use wasmbus_rpc::provider::prelude::*;
+use wasmbus_rpc::Timestamp;
+use wasmcloud_test_util::{
+    check, check_eq,
+    cli::print_test_results,
+    provider_test::test_provider,
+    testing::{TestOptions, TestResult},
+};
+#[allow(unused_imports)]
+use wasmcloud_test_util::{run_selected, run_selected_spawn};
+use utils::*;
+use wasmcloud_interface_endpoint_enumerator::{EndpointEnumerator, EndpointEnumeratorSender, Subdomains};
+
+//
+#[tokio::test]
+async fn run_all() {
+    start_logger();
+    let opts = TestOptions::default();
+    let res = run_selected_spawn!(&opts, test_health_check, test_enumerate_endpoints);
+    print_test_results(&res);
+
+    let passed = res.iter().filter(|tr| tr.passed).count();
+    let total = res.len();
+    assert_eq!(passed, total, "{} passed out of {}", passed, total);
+
+    // try to let the provider shut down gracefully
+    let provider = test_provider().await;
+    let _ = provider.shutdown().await;
+}
+
+/// test that health check returns healthy
+async fn test_health_check(_opt: &TestOptions) -> RpcResult<()> {
+    let prov = test_provider().await;
+
+    // health check
+    let hc = prov.health_check().await;
+    check!(hc.is_ok())?;
+    Ok(())
+}
+
+async fn test_enumerate_endpoints(_opt: &TestOptions) -> RpcResult<Subdomains> {
+    let prov = test_provider().await;
+    let _guard = start_docker();
+
+    let client = EndpointEnumeratorSender::via(prov);
+    let ctx = Context::default();
+
+    let url = "127.0.0.1";
+    let res = client.enumerate_endpoints(&ctx, &url).await?;
+
+    check!(res.success)?;
+    check!(res.reason.is_none())?;
+    check!(res.subdomains.is_some())?;
+    let subdomains = res.subdomains.unwrap();
+    info!("subdomains: {:?}", &subdomains);
+
+    Ok(subdomains)
+}
+//
+// /// test that `SleepySender::sleep()` works correctly
+// async fn test_sleep(_opt: &TestOptions) -> RpcResult<()> {
+//     let prov = test_provider().await;
+//
+//     let client = SleepySender::via(prov);
+//     let ctx = Context::default();
+//
+//     let start = tokio::time::Instant::now();
+//     let sleep_time_ms = 100;
+//     let _ = client.sleep(&ctx, &sleep_time_ms).await?;
+//     let actual_time_slept = start.elapsed();
+//
+//     check!(
+//         actual_time_slept >= Duration::from_millis(sleep_time_ms as u64)
+//     )?;
+//
+//     Ok(())
+// }
+//
+// /// test that `SleepySender::sleep_until()` works correctly
+// async fn test_sleep_until(_opt: &TestOptions) -> RpcResult<()> {
+//     let prov = test_provider().await;
+//
+//     let client = SleepySender::via(prov);
+//     let ctx = Context::default();
+//
+//     let start = tokio::time::Instant::now();
+//     let sleep_duration = Duration::from_millis(100);
+//     let sys_timestamp = SystemTime::now();
+//     let sleep_until = Timestamp::from(sys_timestamp.add(sleep_duration));
+//     let _ = client.sleep_until(&ctx, &sleep_until).await?;
+//     let actual_time_slept = start.elapsed();
+//
+//     check!(
+//         actual_time_slept >= sleep_duration
+//     )?;
+//
+//     Ok(())
+// }
+//
+// /// test that `SleepySender::now()` works correctly
+// async fn test_now(_opt: &TestOptions) -> RpcResult<()> {
+//     let prov = test_provider().await;
+//
+//     let client = SleepySender::via(prov);
+//     let ctx = Context::default();
+//
+//     let start = client.now(&ctx).await?;
+//     let sleep_duration = Duration::from_millis(100);
+//     tokio::time::sleep(sleep_duration).await;
+//     let end = client.now(&ctx).await?;
+//
+//     // check that the difference between the start and end times is within 10ms of the sleep duration
+//     check!((end.as_nanos() - start.as_nanos()).abs_diff(sleep_duration.as_nanos()) < 10_000_000)?;
+//
+//     Ok(())
+// }

@@ -2,10 +2,10 @@
 
 # name of compiled binary (usually project name unless overridden in [[bin]]
 # Required
-bin_path = "target/debug/wasmcloud-provider-sleepy"
+bin_path = "target/debug/wasmcloud-provider-endpoint_enumerator"
 
 # set RUST_LOG environment variable (default "info")
-rust_log = "debug"
+rust_log = "info"
 
 # set RUST_BACKTRACE (default: 0)
 rust_backtrace = "1"
@@ -20,4 +20,4 @@ rust_backtrace = "1"
 #link_name = "default"
 
 # name of contract under test
-contract_id = "jclmnop:sleepy"
+contract_id = "jclmnop:endpoint_enumerator"
