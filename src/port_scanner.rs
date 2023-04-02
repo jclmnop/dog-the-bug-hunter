@@ -5,22 +5,23 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use tracing::log::info;
-use tracing::instrument;
+use tracing::{info, instrument, trace, warn};
 use wasmcloud_interface_endpoint_enumerator::{Port, Subdomain};
 
-#[instrument(level = "debug", name = "scan_ports", fields(subdomain = %subdomain.subdomain))]
+#[instrument(level = "info", name = "scan_ports", fields(subdomain = %subdomain.subdomain))]
 pub async fn scan_ports(
     concurrency: usize,
     mut subdomain: Subdomain,
 ) -> Result<Subdomain> {
+    info!("Scanning ports for {}", subdomain.subdomain);
     let socket_addresses: Vec<SocketAddr> =
         format!("{}:1024", subdomain.subdomain)
-            .to_socket_addrs().map_err(|e| anyhow!("\nsubdomain:{}\n{e}", subdomain.subdomain))?
+            .to_socket_addrs()
+            .map_err(|e| anyhow!("\nsubdomain:{}\n{e}", subdomain.subdomain))?
             .collect();
 
     if socket_addresses.is_empty() {
-        info!("No socket addresses found for {}", subdomain.subdomain);
+        warn!("No socket addresses found for {}", subdomain.subdomain);
         return Ok(subdomain);
     }
 
@@ -42,7 +43,9 @@ pub async fn scan_ports(
     Ok(subdomain)
 }
 
+#[instrument(level = "trace", name = "scan_port", fields(port = %port))]
 pub async fn scan_port(mut socket_address: SocketAddr, port: u16) -> Port {
+    trace!("Scanning port {}", port);
     let timeout_limit = Duration::from_secs(3);
     socket_address.set_port(port);
 
@@ -67,47 +70,6 @@ pub async fn scan_port(mut socket_address: SocketAddr, port: u16) -> Port {
 mod tests {
     use super::*;
     use std::net::Ipv4Addr;
-    use std::process::{Command, Stdio};
-    use env_logger;
-
-    pub struct DockerGuard<'a> {
-        pub docker_dir: &'a str,
-    }
-
-    impl<'a> Drop for DockerGuard<'a> {
-        fn drop(&mut self) {
-            info!("Running docker-compose down (in drop)");
-            let mut docker_down = Command::new("docker-compose")
-                .arg("down")
-                .current_dir(self.docker_dir)
-                .stdout(Stdio::null())
-                .spawn()
-                .expect("failed to run docker-compose down");
-            docker_down.wait().expect("failed to wait on docker-compose down");
-        }
-    }
-
-    pub fn start_docker<'a>() -> DockerGuard<'a> {
-        info!("Running docker-compose up");
-        // Set the working directory to the 'tests/docker' folder
-        let docker_dir = "./tests/docker";
-
-        // Run the docker-compose up -d command
-        let mut docker_up = Command::new("docker-compose")
-            .args(&["up", "-d"])
-            .current_dir(docker_dir)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("failed to run docker-compose up");
-        docker_up.wait().expect("failed to wait on docker-compose up");
-
-        DockerGuard { docker_dir }
-    }
-
-    fn start_logger() {
-        let _ = env_logger::builder().filter_level(tracing::log::LevelFilter::Info).try_init();
-    }
 
     #[tokio::test]
     async fn test_scan_port() {
@@ -115,50 +77,51 @@ mod tests {
             SocketAddr::new(Ipv4Addr::new(127, 0, 0, 1).into(), 1024);
         let port = scan_port(socket_address, 80).await;
         assert_eq!(port.port, 80);
-        assert_eq!(port.is_open, false);
+        assert!(!port.is_open);
     }
 
-    #[tokio::test]
-    async fn test_scan_ports() {
-        start_logger();
-
-        // Run the docker-compose up -d command
-        // Guard ensures that the docker-compose down command is run when the test
-        // completes, even if it panics
-        let _docker_guard = start_docker();
-
-        // Run the port scan and hold onto the result
-        let subdomain = Subdomain {
-            open_ports: vec![],
-            subdomain: "localhost".to_string(),
-        };
-
-        let result = scan_ports(1, subdomain).await;
-
-        // Assert
-        assert!(result.is_ok());
-        let subdomain = result.unwrap();
-        info!("subdomain: {:?}", subdomain);
-
-        assert_eq!(subdomain.subdomain, "localhost");
-        assert!(subdomain.open_ports.len() >= 3);
-
-        assert!(subdomain.open_ports.contains(&Port {
-            findings: None,
-            is_open: true,
-            port: 8000
-        }));
-
-        assert!(subdomain.open_ports.contains(&Port {
-            findings: None,
-            is_open: true,
-            port: 8001
-        }));
-
-        assert!(subdomain.open_ports.contains(&Port {
-            findings: None,
-            is_open: true,
-            port: 8002
-        }));
-    }
+    // NOTE: moved to integration tests
+    // #[tokio::test]
+    // async fn test_scan_ports() {
+    //     start_logger();
+    //
+    //     // Run the docker-compose up -d command
+    //     // Guard ensures that the docker-compose down command is run when the test
+    //     // completes, even if it panics
+    //     let _docker_guard = start_docker();
+    //
+    //     // Run the port scan and hold onto the result
+    //     let subdomain = Subdomain {
+    //         open_ports: vec![],
+    //         subdomain: "localhost".to_string(),
+    //     };
+    //
+    //     let result = scan_ports(1, subdomain).await;
+    //
+    //     // Assert
+    //     assert!(result.is_ok());
+    //     let subdomain = result.unwrap();
+    //     info!("subdomain: {:?}", subdomain);
+    //
+    //     assert_eq!(subdomain.subdomain, "localhost");
+    //     assert!(subdomain.open_ports.len() >= 3);
+    //
+    //     assert!(subdomain.open_ports.contains(&Port {
+    //         findings: None,
+    //         is_open: true,
+    //         port: 8000
+    //     }));
+    //
+    //     assert!(subdomain.open_ports.contains(&Port {
+    //         findings: None,
+    //         is_open: true,
+    //         port: 8001
+    //     }));
+    //
+    //     assert!(subdomain.open_ports.contains(&Port {
+    //         findings: None,
+    //         is_open: true,
+    //         port: 8002
+    //     }));
+    // }
 }

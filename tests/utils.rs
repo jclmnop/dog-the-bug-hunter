@@ -15,7 +15,9 @@ impl<'a> Drop for DockerGuard<'a> {
             .stderr(Stdio::null())
             .spawn()
             .expect("failed to run docker-compose down");
-        docker_down.wait().expect("failed to wait on docker-compose down");
+        docker_down
+            .wait()
+            .expect("failed to wait on docker-compose down");
     }
 }
 
@@ -26,16 +28,21 @@ pub fn start_docker<'a>() -> DockerGuard<'a> {
 
     // Run the docker-compose up -d command
     let mut docker_up = Command::new("docker-compose")
-        .args(&["up", "-d"])
+        .args(["up", "-d"])
         .current_dir(docker_dir)
         .stdout(Stdio::null())
         .spawn()
         .expect("failed to run docker-compose up");
-    docker_up.wait().expect("failed to wait on docker-compose up");
+    docker_up
+        .wait()
+        .expect("failed to wait on docker-compose up");
 
     DockerGuard { docker_dir }
 }
 
+#[allow(dead_code)]
 pub fn start_logger() {
-    let _ = env_logger::builder().filter_level(tracing::log::LevelFilter::Info).try_init();
+    let _ = env_logger::builder()
+        .filter_level(tracing::log::LevelFilter::Trace)
+        .try_init();
 }

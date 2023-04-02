@@ -12,7 +12,9 @@ pub async fn enumerate_subdomains(domain: &str) -> Result<Subdomains> {
     let url = format!("https://crt.sh/?q=%25.{domain}&output=json");
     let res = reqwest::get(&url).await?;
 
-    let crt_sh_response: Vec<CrtShEntry> = res.json().await.map_err(|e| anyhow::anyhow!("\nError decoding crt.sh response: {e}"))?;
+    let crt_sh_response: Vec<CrtShEntry> = res.json().await.map_err(|e| {
+        anyhow::anyhow!("\nError decoding crt.sh response: {e}")
+    })?;
 
     Ok(parse_crt_sh_response(crt_sh_response)
         .into_iter()
@@ -26,15 +28,14 @@ pub async fn enumerate_subdomains(domain: &str) -> Result<Subdomains> {
 fn parse_crt_sh_response(crt_sh_response: Vec<CrtShEntry>) -> Vec<String> {
     let subdomains: HashSet<String> = crt_sh_response
         .into_iter()
-        .map(|entry| {
+        .flat_map(|entry| {
             entry
                 .name_value
-                .split("\n")
+                .split('\n')
                 .map(|subdomain| subdomain.trim().to_string())
                 .collect::<Vec<String>>()
         })
-        .flatten()
-        .filter(|subdomain| !subdomain.contains("*"))
+        .filter(|subdomain| !subdomain.contains('*'))
         .collect();
 
     subdomains.into_iter().collect()
@@ -43,9 +44,6 @@ fn parse_crt_sh_response(crt_sh_response: Vec<CrtShEntry>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
-    use tracing::info;
-    use serde_json;
 
     // fn start_logger() {
     //     let _ = env_logger::builder().try_init();
@@ -105,9 +103,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handles_empty_response() {
-
-    }
+    async fn handles_empty_response() {}
 
     // #[tokio::test]
     // async fn test_enumerate_subdomains() {

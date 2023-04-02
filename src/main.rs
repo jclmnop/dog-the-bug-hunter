@@ -9,8 +9,8 @@ mod subdomains;
 use crate::subdomains::enumerate_subdomains;
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::{stream, FutureExt, StreamExt};
-use tracing::{error, info, instrument};
+use futures::{stream, StreamExt};
+use tracing::{debug, error, info, instrument, trace};
 use wasmbus_rpc::common::Context;
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
@@ -42,46 +42,29 @@ impl ProviderHandler for EndpointEnumeratorProvider {}
 
 #[async_trait]
 impl EndpointEnumerator for EndpointEnumeratorProvider {
-    #[instrument(name = "enumerate_endpoints", skip(self, _ctx, url))]
+    #[instrument(name = "enumerate_endpoints", skip(self, ctx, url))]
     async fn enumerate_endpoints<TS: ToString + ?Sized + Sync>(
         &self,
-        _ctx: &Context,
+        ctx: &Context,
         url: &TS,
-    ) -> RpcResult<EnumerateEndpointsResponse> {
-        let url = &*url.to_string();
-        info!("Enumerating endpoints for {}", url);
-        let subdomains = match self.enumerate_subdomains(url).await {
-            Ok(subdomains) => subdomains,
-            Err(e) => {
-                error!("Error enumerating subdomains: {}", e);
-                return Ok(EnumerateEndpointsResponse {
-                    reason: Some(e.to_string()),
-                    subdomains: None,
-                    success: false,
-                });
-            }
+    ) -> RpcResult<()> {
+        let url = url.to_string();
+
+        let ld = {
+            let host_bridge = get_host_bridge();
+            let actor_id = ctx.actor.as_ref().ok_or(RpcError::Other(
+                "Unable to find actor ID".to_string(),
+            ))?;
+            host_bridge.get_link(actor_id).await.ok_or(RpcError::Other(
+                "Unable to find link definition".to_string(),
+            ))?
         };
 
-        let subdomains =
-            match self.filter_unresolvable_domains(subdomains).await {
-                Ok(subdomains) => subdomains,
-                Err(e) => {
-                    error!("Error filtering unresolvable domains: {}", e);
-                    return Ok(EnumerateEndpointsResponse {
-                        reason: Some(e.to_string()),
-                        subdomains: None,
-                        success: false,
-                    });
-                }
-            };
-
-        let subdomains = self.scan_ports_for_subdomains(subdomains).await;
-
-        Ok(EnumerateEndpointsResponse {
-            reason: None,
-            subdomains: Some(subdomains),
-            success: true,
-        })
+        let ctx = ctx.to_owned();
+        tokio::task::spawn(
+            async move { Self::handle_callback(ctx, url, ld).await },
+        );
+        Ok(())
     }
 }
 
@@ -89,8 +72,56 @@ impl EndpointEnumeratorProvider {
     pub const DNS_CONCURRENCY: usize = 100;
     pub const PORT_CONCURRENCY: usize = 100;
 
-    #[instrument(name = "enumerate_subdomains", skip(self))]
-    async fn enumerate_subdomains(&self, url: &str) -> Result<Subdomains> {
+    async fn handle_callback(
+        ctx: Context,
+        url: String,
+        link_def: LinkDefinition,
+    ) -> Result<()> {
+        let actor =
+            EndpointEnumeratorCallbackReceiverSender::for_actor(&link_def);
+        let response = Self::process_request(url.as_str()).await;
+        actor.enumerate_endpoints_callback(&ctx, &response).await?;
+        Ok(())
+    }
+
+    async fn process_request(url: &str) -> EnumerateEndpointsResponse {
+        info!("Enumerating endpoints for {}", url);
+        let subdomains = match Self::enumerate_subdomains(url).await {
+            Ok(subdomains) => subdomains,
+            Err(e) => {
+                error!("Error enumerating subdomains: {}", e);
+                return EnumerateEndpointsResponse {
+                    reason: Some(e.to_string()),
+                    subdomains: None,
+                    success: false,
+                };
+            }
+        };
+
+        let subdomains =
+            match Self::filter_unresolvable_domains(subdomains).await {
+                Ok(subdomains) => subdomains,
+                Err(e) => {
+                    error!("Error filtering unresolvable domains: {}", e);
+                    return EnumerateEndpointsResponse {
+                        reason: Some(e.to_string()),
+                        subdomains: None,
+                        success: false,
+                    };
+                }
+            };
+
+        let subdomains = Self::scan_ports_for_subdomains(subdomains).await;
+
+        EnumerateEndpointsResponse {
+            reason: None,
+            subdomains: Some(subdomains),
+            success: true,
+        }
+    }
+
+    #[instrument(name = "enumerate_subdomains")]
+    async fn enumerate_subdomains(url: &str) -> Result<Subdomains> {
         info!("Enumerating subdomains for {}", url);
         let mut subdomains = enumerate_subdomains(url).await?;
         let original_subdomain = Subdomain {
@@ -103,9 +134,8 @@ impl EndpointEnumeratorProvider {
         Ok(subdomains)
     }
 
-    #[instrument(name = "filter_unresolvable_domains", skip(self, subdomains))]
+    #[instrument(name = "filter_unresolvable_domains", skip(subdomains))]
     async fn filter_unresolvable_domains(
-        &self,
         subdomains: Subdomains,
     ) -> Result<Subdomains> {
         info!("Filtering unresolvable domains");
@@ -118,12 +148,11 @@ impl EndpointEnumeratorProvider {
             .await)
     }
 
-    #[instrument(name = "scan_ports_for_subdomains", skip(self, subdomains))]
-    async fn scan_ports_for_subdomains(
-        &self,
-        subdomains: Subdomains,
-    ) -> Subdomains {
-        info!("Scanning ports for subdomains");
+    #[instrument(name = "scan_ports_for_subdomains", skip(subdomains))]
+    async fn scan_ports_for_subdomains(subdomains: Subdomains) -> Subdomains {
+        info!("Scanning ports for subdomains...");
+        debug!("Scanning ports for {} subdomains", subdomains.len());
+        trace!("Subdomains: {:#?}", subdomains);
         stream::iter(subdomains.into_iter())
             .map(|subdomain| {
                 port_scanner::scan_ports(Self::PORT_CONCURRENCY, subdomain)
@@ -131,7 +160,7 @@ impl EndpointEnumeratorProvider {
             .buffer_unordered(1)
             .filter_map(|subdomain| async move {
                 if let Err(e) = &subdomain {
-                    error!("Error scanning ports for {}", e);
+                    error!("Error scanning ports: {}", e);
                 };
                 subdomain.ok()
             })
