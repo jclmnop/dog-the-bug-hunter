@@ -1,5 +1,6 @@
 mod utils;
 
+use std::collections::HashMap;
 use futures::StreamExt;
 use tracing::info;
 use tracing::log::error;
@@ -8,11 +9,12 @@ use wasmbus_rpc::common::deserialize;
 use wasmbus_rpc::core::Invocation;
 use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
-use wasmcloud_interface_endpoint_enumerator::{EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse, Port, Subdomains};
+use wasmcloud_interface_endpoint_enumerator::{
+    EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse,
+    Port, Subdomains,
+};
 use wasmcloud_test_util::{
-    check,
-    cli::print_test_results,
-    provider_test::test_provider,
+    check, cli::print_test_results, provider_test::test_provider,
     testing::TestOptions,
 };
 #[allow(unused_imports)]
@@ -20,10 +22,17 @@ use wasmcloud_test_util::{run_selected, run_selected_spawn};
 
 #[tokio::test]
 async fn run_all() {
-    // start_logger();
+    let _guard = start_docker();
+
+    start_logger();
     let opts = TestOptions::default();
     let res =
-        run_selected_spawn!(&opts, test_health_check, test_enumerate_endpoints);
+        run_selected_spawn!(
+            &opts,
+            test_health_check,
+            test_enumerate_endpoints,
+            test_jobs_queued_sequentially
+        );
     print_test_results(&res);
 
     let passed = res.iter().filter(|tr| tr.passed).count();
@@ -37,7 +46,8 @@ async fn run_all() {
 
 /// A mock actor to receive the callback from the provider once endpoints are enumerated
 async fn mock_callback_actor(
-) -> tokio::task::JoinHandle<RpcResult<Option<EnumerateEndpointsResponse>>> {
+    mut n_requests: u32,
+) -> tokio::task::JoinHandle<RpcResult<Vec<EnumerateEndpointsResponse>>> {
     let handle = tokio::runtime::Handle::current();
 
     handle.spawn(async move {
@@ -48,20 +58,24 @@ async fn mock_callback_actor(
             .subscribe(topic)
             .await
             .map_err(|e| RpcError::Nats(e.to_string()))?;
-        let mut response = None;
-        while let Some(msg) = sub.next().await {
+        let mut responses = Vec::new();
+        'callback: while let Some(msg) = sub.next().await {
             let inv: Invocation = deserialize(&msg.payload)
                 .map_err(|e| RpcError::Deser(e.to_string()))?;
             if &inv.operation != "EndpointEnumeratorCallbackReceiver.EnumerateEndpointsCallback" {
                 error!("unexpected invocation: {:?}", &inv);
             } else {
                 info!("Callback received!");
-                response = deserialize(&inv.msg)
+                let response = deserialize(&inv.msg)
                     .map_err(|e| RpcError::Deser(e.to_string()))?;
-                break;
+                responses.push(response);
+                n_requests -= 1;
+                if n_requests == 0 {
+                    break 'callback;
+                }
             }
         }
-        Ok(response)
+        Ok(responses)
     })
 }
 
@@ -78,8 +92,7 @@ async fn test_health_check(_opt: &TestOptions) -> RpcResult<()> {
 /// test that endpoints are enumerated and callback is successful with expected results
 async fn test_enumerate_endpoints(_opt: &TestOptions) -> RpcResult<Subdomains> {
     let prov = test_provider().await;
-    let actor = mock_callback_actor().await;
-    let _guard = start_docker();
+    let actor = mock_callback_actor(1).await;
 
     let client = EndpointEnumeratorSender::via(prov);
     let ctx = Context::default();
@@ -89,8 +102,11 @@ async fn test_enumerate_endpoints(_opt: &TestOptions) -> RpcResult<Subdomains> {
     client.enumerate_endpoints(&ctx, &url).await?;
     let res = actor
         .await
-        .map_err(|e| RpcError::Other(e.to_string()))??
-        .expect("expected a response from the mock actor");
+        .map_err(|e| RpcError::Other(e.to_string()))??;
+    let res = res
+        .first()
+        .expect("expected a response from the mock actor")
+        .clone();
 
     check!(res.success)?;
     check!(res.reason.is_none())?;
@@ -121,6 +137,49 @@ async fn test_enumerate_endpoints(_opt: &TestOptions) -> RpcResult<Subdomains> {
 
     Ok(subdomains)
 }
+
+async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
+    let n_requests = 3;
+    let prov = test_provider().await;
+    let actor = mock_callback_actor(n_requests).await;
+
+    let client = EndpointEnumeratorSender::via(prov);
+    let ctx = Context::default();
+
+    // Send requests in sequential order, without waiting for the response
+    let urls: Vec<_> = (1..n_requests + 1).map(|i| format!("127.0.0.{}", i)).collect();
+    let mut requests = Vec::new();
+    for url in &urls {
+        info!("sending request for {}", url);
+        let req = client.enumerate_endpoints(&ctx, url);
+        requests.push(req);
+    }
+
+    for req in requests {
+        req.await?;
+    }
+
+    // Wait for the mock actor to receive and process the responses
+    info!("waiting for mock actor to receive and process responses...");
+    let responses = actor
+        .await
+        .map_err(|e| RpcError::Other(e.to_string()))??;
+
+    check!(responses.len() == n_requests as usize)?;
+
+    // Check that the responses are in the correct order
+    info!("checking responses...");
+    for i in 1..n_requests + 1 {
+        let url = format!("127.0.0.{}", i);
+        let res = responses[i as usize - 1].clone();
+        check!(res.success)?;
+        check!(res.reason.is_none())?;
+        check!(res.subdomains.as_ref().unwrap().first().unwrap().subdomain == url)?;
+    }
+
+    Ok(())
+}
+
 //
 // /// test that `SleepySender::sleep()` works correctly
 // async fn test_sleep(_opt: &TestOptions) -> RpcResult<()> {

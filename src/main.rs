@@ -1,20 +1,24 @@
-//! sleepy capability provider
-//!
-//!
 mod common_ports;
 mod dns_resolver;
 mod port_scanner;
 mod subdomains;
 
+use std::collections::HashMap;
+use std::str::FromStr;
 use crate::subdomains::enumerate_subdomains;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
+use std::sync::Arc;
+use tokio::sync::{Semaphore, RwLock};
 use tracing::{debug, error, info, instrument, trace};
 use wasmbus_rpc::common::Context;
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
 use wasmcloud_interface_endpoint_enumerator::*;
+
+type ActorId = String;
+type WorkPermits = RwLock<HashMap<ActorId, Arc<Semaphore>>>;
 
 // main (via provider_main) initializes the threaded tokio executor,
 // listens to lattice rpcs, handles actor links,
@@ -30,15 +34,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Sleepy capability provider implementation
-/// contractId: "jclmnop:sleepy"
+/// Endpoint enumerator provider
+/// contractId: "jclmnop:endpoint_enumerator"
 #[derive(Default, Clone, Provider)]
 #[services(EndpointEnumerator)]
-struct EndpointEnumeratorProvider {}
+struct EndpointEnumeratorProvider {
+    pub inner: Inner,
+}
+
+#[derive(Clone)]
+struct Inner {
+    /// Semaphore to limit the number of concurrent tasks
+    pub work_permits: Arc<WorkPermits>,
+}
+
+impl Default for Inner {
+    fn default() -> Self {
+        Self {
+            work_permits: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+impl Inner {
+    pub async fn add_permit(&self, actor_id: String, concurrency: usize) {
+        let mut work_permits = self.work_permits.write().await;
+        work_permits.insert(
+            actor_id,
+            Arc::new(Semaphore::new(concurrency)),
+        );
+    }
+
+    pub async fn remove_permit(&self, actor_id: &str)  {
+        let mut work_permits = self.work_permits.write().await;
+        work_permits.remove(actor_id);
+    }
+}
 
 /// use default implementations of provider message handlers
 impl ProviderDispatch for EndpointEnumeratorProvider {}
-impl ProviderHandler for EndpointEnumeratorProvider {}
+
+#[async_trait]
+impl ProviderHandler for EndpointEnumeratorProvider {
+    /// Add a permit for the actor to perform work with the given concurrency value (default: 1)
+    async fn put_link(&self, ld: &LinkDefinition) -> RpcResult<bool> {
+        let link_values = &ld.values;
+        let actor_id = ld.actor_id.clone();
+        let concurrency = link_values
+            .get("concurrency")
+            .and_then(|v| usize::from_str(v).ok())
+            .unwrap_or(1);
+        self.inner.add_permit(actor_id.clone(), concurrency).await;
+        info!("A maximum of {concurrency} jobs will be processed concurrently for the link to {actor_id}.");
+        Ok(true)
+    }
+
+    /// Remove the permit for the actor when a link is deleted
+    async fn delete_link(&self, actor_id: &str) {
+        self.inner.remove_permit(actor_id).await;
+        info!("Removed permits for actor {actor_id}.");
+    }
+}
 
 #[async_trait]
 impl EndpointEnumerator for EndpointEnumeratorProvider {
@@ -61,9 +117,10 @@ impl EndpointEnumerator for EndpointEnumeratorProvider {
         };
 
         let ctx = ctx.to_owned();
-        tokio::task::spawn(
-            async move { Self::handle_callback(ctx, url, ld).await },
-        );
+        let permit = self.inner.work_permits.clone();
+        tokio::task::spawn(async move {
+            Self::handle_callback(ctx, url, ld, permit).await
+        });
         Ok(())
     }
 }
@@ -76,10 +133,24 @@ impl EndpointEnumeratorProvider {
         ctx: Context,
         url: String,
         link_def: LinkDefinition,
+        work_permits: Arc<WorkPermits>,
     ) -> Result<()> {
         let actor =
             EndpointEnumeratorCallbackReceiverSender::for_actor(&link_def);
-        let response = Self::process_request(url.as_str()).await;
+
+        // Only allow one request to be processed at a time
+        let response = {
+            let actor_id = link_def.actor_id.clone();
+            let permit = {
+                let permits = work_permits.read().await;
+                permits.get(&actor_id).ok_or(RpcError::Other(
+                    "Unable to find permit".to_string(),
+                ))?.clone()
+            };
+            let _permit = permit.acquire().await?;
+            Self::process_request(url.as_str()).await
+        };
+
         actor.enumerate_endpoints_callback(&ctx, &response).await?;
         Ok(())
     }

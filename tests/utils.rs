@@ -43,6 +43,6 @@ pub fn start_docker<'a>() -> DockerGuard<'a> {
 #[allow(dead_code)]
 pub fn start_logger() {
     let _ = env_logger::builder()
-        .filter_level(tracing::log::LevelFilter::Trace)
+        .filter_level(tracing::log::LevelFilter::Info)
         .try_init();
 }
