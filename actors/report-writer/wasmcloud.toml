@@ -1,0 +1,11 @@
+name = "report-writer"
+language = "rust"
+type = "actor"
+version = "0.1.0"
+
+[actor]
+claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging"]
+call-alias = "dtbh/report-writer"
+
+[rust]
+target_path = "../../target"

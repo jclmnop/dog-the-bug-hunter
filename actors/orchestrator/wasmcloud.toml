@@ -1,0 +1,11 @@
+name = "orchestrator"
+language = "rust"
+type = "actor"
+version = "0.1.0"
+
+[actor]
+claims = ["jclmnop:orchestrator", "wasmcloud:builtin:logging"]
+call-alias = "dtbh/orchestrator"
+
+[rust]
+target_path = "../../target"

@@ -1,0 +1,25 @@
+[package]
+name = "report-writer"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "report_writer"
+
+[dependencies]
+anyhow.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+wasmbus-rpc.workspace = true
+wasmcloud-interface-logging.workspace = true
+wasmcloud-interface-keyvalue.workspace = true
+dtbh_interface.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+webassembly-test.workspace = true
+

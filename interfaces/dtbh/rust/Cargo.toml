@@ -1,0 +1,35 @@
+[package]
+name = "dtbh_interface"
+version.workspace = true
+description = "Interface library for the automated scanner"
+authors.workspace = true
+edition.workspace = true
+license = "Apache-2.0"
+
+# when publishing to crates.io, freeze src by omitting build.rs
+exclude = [ "build.rs" ]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+serde_bytes = "0.11.5"
+wasmbus-rpc.workspace = true
+anyhow.workspace = true
+futures.workspace = true
+wasmcloud-interface-logging.workspace = true
+wasmcloud-interface-numbergen.workspace = true
+wasmcloud-interface-messaging.workspace = true
+wasmcloud-interface-httpclient.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+
+# build-dependencies needed for build.rs
+[build-dependencies]
+weld-codegen.workspace = true
+

@@ -1,0 +1,11 @@
+name = "scanner-template"
+language = "rust"
+type = "actor"
+version = "0.1.0"
+
+[actor]
+claims = ["wasmcloud:server", "wasmcloud:builtin:logging"]
+call-alias = "dtbh/api-gateway"
+
+[rust]
+target_path = "../../target"
