@@ -1,0 +1,27 @@
+[package]
+name = "wasmcloud-interface-endpoint-enumerator"
+version = "0.1.0"
+description = "Interface for interacting with the endpoint-enumberator capability provider."
+authors.workspace = true
+edition.workspace = true
+#repository = "https://github.com/jclmnop/wasmcloud-interface-sleepy"
+license = "Apache-2.0"
+readme = "../README.md"
+keywords = ["wasm", "asynchronous"]
+
+# when publishing to crates.io, freeze src by omitting build.rs
+exclude = [ "build.rs" ]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+serde_bytes = "0.11.5"
+wasmbus-rpc = "0.12.0"
+
+# build-dependencies needed for build.rs
+[build-dependencies]
+weld-codegen.workspace = true
+
