@@ -6,7 +6,6 @@ metadata package = [ { namespace: "jclmnop.dtbh.interface.orchestrator", crate: 
 
 namespace jclmnop.dtbh.interface.orchestrator
 
-use jclmnop.dtbh.interface.report_writer#Report
 use org.wasmcloud.model#wasmbus
 use org.wasmcloud.model#U32
 
@@ -24,7 +23,7 @@ service Orchestrator {
 /// Run scans for a given target
 operation RunScans {
   input: RunScansRequest,
-  output: Report,
+  output: Boolean,
 }
 
 structure RunScansRequest {
@@ -33,14 +32,5 @@ structure RunScansRequest {
   /// The target to scan
   @required
   target: String,
-  /// The number of concurrent scans to run for dns resolving
-  @required
-  dnsConcurrency: U32,
-  /// The number of concurrent scans to run for port scanning
-  @required
-  portConcurrency: U32,
-  /// The number of concurrent scans to run for http-endpoint scanning
-  @required
-  httpConcurrency: U32,
 }
 

@@ -31,6 +31,9 @@ pub struct EnumerateEndpointsResponse {
     /// The list of endpoints that can be scanned for vulnerabilities.
     #[serde(default)]
     pub success: bool,
+    /// Timestamp of when the request was received, used later for logs.
+    #[serde(default)]
+    pub timestamp: Timestamp,
 }
 
 // Encode EnumerateEndpointsResponse as CBOR and append to output stream
@@ -43,7 +46,7 @@ pub fn encode_enumerate_endpoints_response<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(3)?;
+    e.map(4)?;
     if let Some(val) = val.reason.as_ref() {
         e.str("reason")?;
         e.str(val)?;
@@ -58,6 +61,9 @@ where
     }
     e.str("success")?;
     e.bool(val.success)?;
+    e.str("timestamp")?;
+    e.i64(val.timestamp.sec)?;
+    e.u32(val.timestamp.nsec)?;
     Ok(())
 }
 
@@ -70,6 +76,7 @@ pub fn decode_enumerate_endpoints_response(
         let mut reason: Option<Option<String>> = Some(None);
         let mut subdomains: Option<Option<Subdomains>> = Some(None);
         let mut success: Option<bool> = None;
+        let mut timestamp: Option<Timestamp> = None;
 
         let is_array = match d.datatype()? {
                 wasmbus_rpc::cbor::Type::Array => true,
@@ -100,6 +107,12 @@ pub fn decode_enumerate_endpoints_response(
                         }
                     }
                     2 => success = Some(d.bool()?),
+                    3 => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
                     _ => d.skip()?,
                 }
             }
@@ -127,6 +140,12 @@ pub fn decode_enumerate_endpoints_response(
                         }
                     }
                     "success" => success = Some(d.bool()?),
+                    "timestamp" => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
                     _ => d.skip()?,
                 }
             }
@@ -140,6 +159,15 @@ pub fn decode_enumerate_endpoints_response(
             } else {
                 return Err(RpcError::Deser(
                     "missing field EnumerateEndpointsResponse.success (#2)"
+                        .to_string(),
+                ));
+            },
+
+            timestamp: if let Some(__x) = timestamp {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field EnumerateEndpointsResponse.timestamp (#3)"
                         .to_string(),
                 ));
             },

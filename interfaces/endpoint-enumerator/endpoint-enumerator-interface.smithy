@@ -41,6 +41,9 @@ structure EnumerateEndpointsResponse {
   /// The list of endpoints that can be scanned for vulnerabilities.
   @required
   success: Boolean,
+  /// Timestamp of when the request was received, used later for logs.
+  @required
+  timestamp: Timestamp,
   reason: String,
   subdomains: Subdomains,
 }

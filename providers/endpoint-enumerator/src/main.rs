@@ -15,6 +15,7 @@ use tracing::{debug, error, info, instrument, trace};
 use wasmbus_rpc::common::Context;
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
+use wasmbus_rpc::Timestamp;
 use wasmcloud_interface_endpoint_enumerator::*;
 
 type ActorId = String;
@@ -157,6 +158,7 @@ impl EndpointEnumeratorProvider {
 
     async fn process_request(url: &str) -> EnumerateEndpointsResponse {
         info!("Enumerating endpoints for {}", url);
+        let timestamp = Timestamp::now();
         let subdomains = match Self::enumerate_subdomains(url).await {
             Ok(subdomains) => subdomains,
             Err(e) => {
@@ -165,6 +167,7 @@ impl EndpointEnumeratorProvider {
                     reason: Some(e.to_string()),
                     subdomains: None,
                     success: false,
+                    timestamp
                 };
             }
         };
@@ -178,6 +181,7 @@ impl EndpointEnumeratorProvider {
                         reason: Some(e.to_string()),
                         subdomains: None,
                         success: false,
+                        timestamp,
                     };
                 }
             };
@@ -188,6 +192,7 @@ impl EndpointEnumeratorProvider {
             reason: None,
             subdomains: Some(subdomains),
             success: true,
+            timestamp,
         }
     }
 
