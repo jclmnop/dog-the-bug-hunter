@@ -40,6 +40,12 @@ providers to the super-constellation, on any cloud provider.
 - [ ] Test on local
 - [ ] Test on cosmonic
 - [ ] Test scaling on Railway/Digital Ocean
+- [ ] do i need to build a "middle-manager" provider to split up the work of the vulnerability scanning actors to get
+      round the 2 second RPC timeout?
+  - [ ] orchestrator splits job into chunks of 10 or so, converts to an array of NATS `PubMessage`s
+  - [ ] send array to middle manager, along with a specified delay (default 500ms maybe) and an array of NATS topics to publish to
+  - [ ] middle manager spawns a task
+    - [ ] publishes each NATS message to all the topics with the specified delay between each one
 
 ### Actors
 - [ ] Implement messaging to handle vulnerability scanner calls and callbacks
