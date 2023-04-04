@@ -24,18 +24,6 @@ pub const SMITHY_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RunScansRequest {
-    /// The number of concurrent scans to run for dns resolving
-    #[serde(rename = "dnsConcurrency")]
-    #[serde(default)]
-    pub dns_concurrency: u32,
-    /// The number of concurrent scans to run for http-endpoint scanning
-    #[serde(rename = "httpConcurrency")]
-    #[serde(default)]
-    pub http_concurrency: u32,
-    /// The number of concurrent scans to run for port scanning
-    #[serde(rename = "portConcurrency")]
-    #[serde(default)]
-    pub port_concurrency: u32,
     /// The target to scan
     #[serde(default)]
     pub target: String,
@@ -54,13 +42,7 @@ pub fn encode_run_scans_request<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(5)?;
-    e.str("dnsConcurrency")?;
-    e.u32(val.dns_concurrency)?;
-    e.str("httpConcurrency")?;
-    e.u32(val.http_concurrency)?;
-    e.str("portConcurrency")?;
-    e.u32(val.port_concurrency)?;
+    e.map(2)?;
     e.str("target")?;
     e.str(&val.target)?;
     e.str("userId")?;
@@ -74,9 +56,6 @@ pub fn decode_run_scans_request(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<RunScansRequest, RpcError> {
     let __result = {
-        let mut dns_concurrency: Option<u32> = None;
-        let mut http_concurrency: Option<u32> = None;
-        let mut port_concurrency: Option<u32> = None;
         let mut target: Option<String> = None;
         let mut user_id: Option<String> = None;
 
@@ -93,11 +72,8 @@ pub fn decode_run_scans_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => dns_concurrency = Some(d.u32()?),
-                    1 => http_concurrency = Some(d.u32()?),
-                    2 => port_concurrency = Some(d.u32()?),
-                    3 => target = Some(d.str()?.to_string()),
-                    4 => user_id = Some(d.str()?.to_string()),
+                    0 => target = Some(d.str()?.to_string()),
+                    1 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -105,9 +81,6 @@ pub fn decode_run_scans_request(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                    "dnsConcurrency" => dns_concurrency = Some(d.u32()?),
-                    "httpConcurrency" => http_concurrency = Some(d.u32()?),
-                    "portConcurrency" => port_concurrency = Some(d.u32()?),
                     "target" => target = Some(d.str()?.to_string()),
                     "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
@@ -115,38 +88,11 @@ pub fn decode_run_scans_request(
             }
         }
         RunScansRequest {
-            dns_concurrency: if let Some(__x) = dns_concurrency {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field RunScansRequest.dns_concurrency (#0)"
-                        .to_string(),
-                ));
-            },
-
-            http_concurrency: if let Some(__x) = http_concurrency {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field RunScansRequest.http_concurrency (#1)"
-                        .to_string(),
-                ));
-            },
-
-            port_concurrency: if let Some(__x) = port_concurrency {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field RunScansRequest.port_concurrency (#2)"
-                        .to_string(),
-                ));
-            },
-
             target: if let Some(__x) = target {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field RunScansRequest.target (#3)".to_string(),
+                    "missing field RunScansRequest.target (#0)".to_string(),
                 ));
             },
 
@@ -154,7 +100,7 @@ pub fn decode_run_scans_request(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field RunScansRequest.user_id (#4)".to_string(),
+                    "missing field RunScansRequest.user_id (#1)".to_string(),
                 ));
             },
         }
@@ -175,7 +121,7 @@ pub trait Orchestrator {
         &self,
         ctx: &Context,
         arg: &RunScansRequest,
-    ) -> RpcResult<crate::report_writer::Report>;
+    ) -> RpcResult<bool>;
 }
 
 /// OrchestratorReceiver receives messages defined in the Orchestrator service trait
@@ -263,7 +209,7 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> Orchestrator
         &self,
         ctx: &Context,
         arg: &RunScansRequest,
-    ) -> RpcResult<crate::report_writer::Report> {
+    ) -> RpcResult<bool> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self
@@ -278,9 +224,8 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> Orchestrator
             )
             .await?;
 
-        let value: crate::report_writer::Report =
-            wasmbus_rpc::common::deserialize(&resp)
-                .map_err(|e| RpcError::Deser(format!("'{}': Report", e)))?;
+        let value: bool = wasmbus_rpc::common::deserialize(&resp)
+            .map_err(|e| RpcError::Deser(format!("'{}': Boolean", e)))?;
         Ok(value)
     }
 }

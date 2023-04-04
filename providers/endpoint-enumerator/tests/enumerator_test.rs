@@ -1,7 +1,7 @@
 mod utils;
 
-use std::collections::HashMap;
 use futures::StreamExt;
+use std::collections::HashMap;
 use tracing::info;
 use tracing::log::error;
 use utils::*;
@@ -11,7 +11,7 @@ use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
 use wasmcloud_interface_endpoint_enumerator::{
     EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse,
-    Port, Subdomains,
+    Port, RunScansRequest, Subdomains,
 };
 use wasmcloud_test_util::{
     check, cli::print_test_results, provider_test::test_provider,
@@ -20,19 +20,24 @@ use wasmcloud_test_util::{
 #[allow(unused_imports)]
 use wasmcloud_test_util::{run_selected, run_selected_spawn};
 
+//TODO: fix these tests once some of the wasmcloud interface crates update to wasmbus 0.12.0
+//      until then, i can't use this provider in the orchestrator actor with wasmbus 0.12.0
+//      and these tests don't work with wasmbus 0.11.1 because wasmcloud_test_utils only
+//      mock actor in the latest version, but the latest test utils version isn't compatible
+//      with wasmbus 0.11.1
+
 #[tokio::test]
 async fn run_all() {
     let _guard = start_docker();
 
     start_logger();
     let opts = TestOptions::default();
-    let res =
-        run_selected_spawn!(
-            &opts,
-            test_health_check,
-            test_enumerate_endpoints,
-            test_jobs_queued_sequentially
-        );
+    let res = run_selected_spawn!(
+        &opts,
+        test_health_check,
+        test_enumerate_endpoints,
+        test_jobs_queued_sequentially
+    );
     print_test_results(&res);
 
     let passed = res.iter().filter(|tr| tr.passed).count();
@@ -98,11 +103,13 @@ async fn test_enumerate_endpoints(_opt: &TestOptions) -> RpcResult<Subdomains> {
     let ctx = Context::default();
 
     let url = "127.0.0.1";
+    let req = RunScansRequest {
+        target: url.to_string(),
+        user_id: "test".to_string(),
+    };
     // let url = "github.com";
-    client.enumerate_endpoints(&ctx, &url).await?;
-    let res = actor
-        .await
-        .map_err(|e| RpcError::Other(e.to_string()))??;
+    client.enumerate_endpoints(&ctx, &req).await?;
+    let res = actor.await.map_err(|e| RpcError::Other(e.to_string()))??;
     let res = res
         .first()
         .expect("expected a response from the mock actor")
@@ -147,7 +154,9 @@ async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
     let ctx = Context::default();
 
     // Send requests in sequential order, without waiting for the response
-    let urls: Vec<_> = (1..n_requests + 1).map(|i| format!("127.0.0.{}", i)).collect();
+    let urls: Vec<_> = (1..n_requests + 1)
+        .map(|i| format!("127.0.0.{}", i))
+        .collect();
     let mut requests = Vec::new();
     for url in &urls {
         info!("sending request for {}", url);
@@ -161,9 +170,8 @@ async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
 
     // Wait for the mock actor to receive and process the responses
     info!("waiting for mock actor to receive and process responses...");
-    let responses = actor
-        .await
-        .map_err(|e| RpcError::Other(e.to_string()))??;
+    let responses =
+        actor.await.map_err(|e| RpcError::Other(e.to_string()))??;
 
     check!(responses.len() == n_requests as usize)?;
 
@@ -174,7 +182,9 @@ async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
         let res = responses[i as usize - 1].clone();
         check!(res.success)?;
         check!(res.reason.is_none())?;
-        check!(res.subdomains.as_ref().unwrap().first().unwrap().subdomain == url)?;
+        check!(
+            res.subdomains.as_ref().unwrap().first().unwrap().subdomain == url
+        )?;
     }
 
     Ok(())

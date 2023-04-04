@@ -27,7 +27,7 @@ structure Subdomain {
   openPorts: Ports
 }
 
-structure Subdomains {
+list Subdomains {
   member: Subdomain,
 }
 

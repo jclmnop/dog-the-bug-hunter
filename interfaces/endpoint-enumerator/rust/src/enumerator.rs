@@ -34,6 +34,9 @@ pub struct EnumerateEndpointsResponse {
     /// Timestamp of when the request was received, used later for logs.
     #[serde(default)]
     pub timestamp: Timestamp,
+    #[serde(rename = "userId")]
+    #[serde(default)]
+    pub user_id: String,
 }
 
 // Encode EnumerateEndpointsResponse as CBOR and append to output stream
@@ -46,7 +49,7 @@ pub fn encode_enumerate_endpoints_response<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(4)?;
+    e.map(5)?;
     if let Some(val) = val.reason.as_ref() {
         e.str("reason")?;
         e.str(val)?;
@@ -64,6 +67,8 @@ where
     e.str("timestamp")?;
     e.i64(val.timestamp.sec)?;
     e.u32(val.timestamp.nsec)?;
+    e.str("userId")?;
+    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -77,6 +82,7 @@ pub fn decode_enumerate_endpoints_response(
         let mut subdomains: Option<Option<Subdomains>> = Some(None);
         let mut success: Option<bool> = None;
         let mut timestamp: Option<Timestamp> = None;
+        let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
                 wasmbus_rpc::cbor::Type::Array => true,
@@ -113,6 +119,7 @@ pub fn decode_enumerate_endpoints_response(
                             nsec: d.u32()?,
                         })
                     }
+                    4 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -146,6 +153,7 @@ pub fn decode_enumerate_endpoints_response(
                             nsec: d.u32()?,
                         })
                     }
+                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -168,6 +176,15 @@ pub fn decode_enumerate_endpoints_response(
             } else {
                 return Err(RpcError::Deser(
                     "missing field EnumerateEndpointsResponse.timestamp (#3)"
+                        .to_string(),
+                ));
+            },
+
+            user_id: if let Some(__x) = user_id {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field EnumerateEndpointsResponse.user_id (#4)"
                         .to_string(),
                 ));
             },
@@ -468,6 +485,91 @@ pub fn decode_ports(
     Ok(__result)
 }
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct RunScansRequest {
+    /// The target to scan
+    #[serde(default)]
+    pub target: String,
+    #[serde(rename = "userId")]
+    #[serde(default)]
+    pub user_id: String,
+}
+
+// Encode RunScansRequest as CBOR and append to output stream
+#[doc(hidden)]
+#[allow(unused_mut)]
+pub fn encode_run_scans_request<W: wasmbus_rpc::cbor::Write>(
+    mut e: &mut wasmbus_rpc::cbor::Encoder<W>,
+    val: &RunScansRequest,
+) -> RpcResult<()>
+where
+    <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
+{
+    e.map(2)?;
+    e.str("target")?;
+    e.str(&val.target)?;
+    e.str("userId")?;
+    e.str(&val.user_id)?;
+    Ok(())
+}
+
+// Decode RunScansRequest from cbor input stream
+#[doc(hidden)]
+pub fn decode_run_scans_request(
+    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
+) -> Result<RunScansRequest, RpcError> {
+    let __result = {
+        let mut target: Option<String> = None;
+        let mut user_id: Option<String> = None;
+
+        let is_array =
+            match d.datatype()? {
+                wasmbus_rpc::cbor::Type::Array => true,
+                wasmbus_rpc::cbor::Type::Map => false,
+                _ => return Err(RpcError::Deser(
+                    "decoding struct RunScansRequest, expected array or map"
+                        .to_string(),
+                )),
+            };
+        if is_array {
+            let len = d.fixed_array()?;
+            for __i in 0..(len as usize) {
+                match __i {
+                    0 => target = Some(d.str()?.to_string()),
+                    1 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        } else {
+            let len = d.fixed_map()?;
+            for __i in 0..(len as usize) {
+                match d.str()? {
+                    "target" => target = Some(d.str()?.to_string()),
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        }
+        RunScansRequest {
+            target: if let Some(__x) = target {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field RunScansRequest.target (#0)".to_string(),
+                ));
+            },
+
+            user_id: if let Some(__x) = user_id {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field RunScansRequest.user_id (#1)".to_string(),
+                ));
+            },
+        }
+    };
+    Ok(__result)
+}
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Subdomain {
     #[serde(rename = "openPorts")]
     pub open_ports: Ports,
@@ -603,10 +705,10 @@ pub trait EndpointEnumerator {
         "jclmnop:endpoint_enumerator"
     }
     /// Takes a target URL, enumerates the endpoints, and eventually calls back with the results.
-    async fn enumerate_endpoints<TS: ToString + ?Sized + std::marker::Sync>(
+    async fn enumerate_endpoints(
         &self,
         ctx: &Context,
-        arg: &TS,
+        arg: &RunScansRequest,
     ) -> RpcResult<()>;
 }
 
@@ -623,10 +725,12 @@ pub trait EndpointEnumeratorReceiver:
     ) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "EnumerateEndpoints" => {
-                let value: String = wasmbus_rpc::common::deserialize(
+                let value: RunScansRequest = wasmbus_rpc::common::deserialize(
                     &message.arg,
                 )
-                .map_err(|e| RpcError::Deser(format!("'String': {}", e)))?;
+                .map_err(|e| {
+                    RpcError::Deser(format!("'RunScansRequest': {}", e))
+                })?;
 
                 let _resp =
                     EndpointEnumerator::enumerate_endpoints(self, ctx, &value)
@@ -691,12 +795,12 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> EndpointEnumerator
 {
     #[allow(unused)]
     /// Takes a target URL, enumerates the endpoints, and eventually calls back with the results.
-    async fn enumerate_endpoints<TS: ToString + ?Sized + std::marker::Sync>(
+    async fn enumerate_endpoints(
         &self,
         ctx: &Context,
-        arg: &TS,
+        arg: &RunScansRequest,
     ) -> RpcResult<()> {
-        let buf = wasmbus_rpc::common::serialize(&arg.to_string())?;
+        let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self
             .transport
@@ -713,13 +817,13 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> EndpointEnumerator
     }
 }
 
-/// wasmbus.contractId: jclmnop:endpoint_enumerator
+/// wasmbus.contractId: jclmnop:endpoint_enumerator_callback
 /// wasmbus.actorReceive
 #[async_trait]
 pub trait EndpointEnumeratorCallbackReceiver {
     /// returns the capability contract id for this interface
     fn contract_id() -> &'static str {
-        "jclmnop:endpoint_enumerator"
+        "jclmnop:endpoint_enumerator_callback"
     }
     /// Receives the results of the EnumerateEndpoints operation.
     async fn enumerate_endpoints_callback(

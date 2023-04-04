@@ -3,20 +3,22 @@ mod dns_resolver;
 mod port_scanner;
 mod subdomains;
 
-use std::collections::HashMap;
-use std::str::FromStr;
 use crate::subdomains::enumerate_subdomains;
 use anyhow::Result;
 use async_trait::async_trait;
+use dtbh_interface::common::*;
+use dtbh_interface::endpoint_enumerator::*;
+use dtbh_interface::orchestrator::RunScansRequest;
 use futures::{stream, StreamExt};
+use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::{Semaphore, RwLock};
+use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, error, info, instrument, trace};
 use wasmbus_rpc::common::Context;
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
 use wasmbus_rpc::Timestamp;
-use wasmcloud_interface_endpoint_enumerator::*;
 
 type ActorId = String;
 type WorkPermits = RwLock<HashMap<ActorId, Arc<Semaphore>>>;
@@ -60,13 +62,10 @@ impl Default for Inner {
 impl Inner {
     pub async fn add_permit(&self, actor_id: String, concurrency: usize) {
         let mut work_permits = self.work_permits.write().await;
-        work_permits.insert(
-            actor_id,
-            Arc::new(Semaphore::new(concurrency)),
-        );
+        work_permits.insert(actor_id, Arc::new(Semaphore::new(concurrency)));
     }
 
-    pub async fn remove_permit(&self, actor_id: &str)  {
+    pub async fn remove_permit(&self, actor_id: &str) {
         let mut work_permits = self.work_permits.write().await;
         work_permits.remove(actor_id);
     }
@@ -99,14 +98,12 @@ impl ProviderHandler for EndpointEnumeratorProvider {
 
 #[async_trait]
 impl EndpointEnumerator for EndpointEnumeratorProvider {
-    #[instrument(name = "enumerate_endpoints", skip(self, ctx, url))]
-    async fn enumerate_endpoints<TS: ToString + ?Sized + Sync>(
+    #[instrument(name = "enumerate_endpoints", skip(self, ctx, req))]
+    async fn enumerate_endpoints(
         &self,
         ctx: &Context,
-        url: &TS,
+        req: &RunScansRequest,
     ) -> RpcResult<()> {
-        let url = url.to_string();
-
         let ld = {
             let host_bridge = get_host_bridge();
             let actor_id = ctx.actor.as_ref().ok_or(RpcError::Other(
@@ -119,8 +116,9 @@ impl EndpointEnumerator for EndpointEnumeratorProvider {
 
         let ctx = ctx.to_owned();
         let permit = self.inner.work_permits.clone();
+        let req = req.to_owned();
         tokio::task::spawn(async move {
-            Self::handle_callback(ctx, url, ld, permit).await
+            Self::handle_callback(ctx, req, ld, permit).await
         });
         Ok(())
     }
@@ -132,7 +130,7 @@ impl EndpointEnumeratorProvider {
 
     async fn handle_callback(
         ctx: Context,
-        url: String,
+        req: RunScansRequest,
         link_def: LinkDefinition,
         work_permits: Arc<WorkPermits>,
     ) -> Result<()> {
@@ -144,19 +142,26 @@ impl EndpointEnumeratorProvider {
             let actor_id = link_def.actor_id.clone();
             let permit = {
                 let permits = work_permits.read().await;
-                permits.get(&actor_id).ok_or(RpcError::Other(
-                    "Unable to find permit".to_string(),
-                ))?.clone()
+                permits
+                    .get(&actor_id)
+                    .ok_or(RpcError::Other(
+                        "Unable to find permit".to_string(),
+                    ))?
+                    .clone()
             };
             let _permit = permit.acquire().await?;
-            Self::process_request(url.as_str()).await
+            Self::process_request(&req).await
         };
 
         actor.enumerate_endpoints_callback(&ctx, &response).await?;
         Ok(())
     }
 
-    async fn process_request(url: &str) -> EnumerateEndpointsResponse {
+    async fn process_request(
+        req: &RunScansRequest,
+    ) -> EnumerateEndpointsResponse {
+        let url = req.target.as_str();
+        let user_id = req.user_id.to_owned();
         info!("Enumerating endpoints for {}", url);
         let timestamp = Timestamp::now();
         let subdomains = match Self::enumerate_subdomains(url).await {
@@ -167,7 +172,8 @@ impl EndpointEnumeratorProvider {
                     reason: Some(e.to_string()),
                     subdomains: None,
                     success: false,
-                    timestamp
+                    timestamp,
+                    user_id,
                 };
             }
         };
@@ -182,6 +188,7 @@ impl EndpointEnumeratorProvider {
                         subdomains: None,
                         success: false,
                         timestamp,
+                        user_id,
                     };
                 }
             };
@@ -193,6 +200,7 @@ impl EndpointEnumeratorProvider {
             subdomains: Some(subdomains),
             success: true,
             timestamp,
+            user_id,
         }
     }
 

@@ -1,17 +1,19 @@
 //! dtbh Interface
-
-use wasmbus_rpc::core::Actor;
-use crate::report_writer::WriteReportResult;
-use crate::scanner_prelude::{ScanEndpointResult, ScannerModule};
-
 pub mod common;
+pub use common::*;
 pub mod http_endpoint_scanner;
+pub use http_endpoint_scanner::*;
 pub mod orchestrator;
+pub use orchestrator::*;
 pub mod report_writer;
+pub use report_writer::*;
+pub mod endpoint_enumerator;
+pub use endpoint_enumerator::*;
 
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
 pub const RESULTS_TOPIC: &str = "dtbh.results";
 
+#[cfg(target_arch = "wasm32")]
 pub mod scanner_prelude {
     pub use crate::common::*;
     pub use crate::http_endpoint_scanner::{
@@ -21,7 +23,7 @@ pub mod scanner_prelude {
     pub use wasmbus_rpc::actor::prelude::*;
     pub use async_trait::async_trait;
     pub use anyhow::Result;
-    pub use tracing::{debug, error, info, instrument, trace};
+    pub use wasmcloud_interface_logging::{debug, error, info};
     use wasmbus_rpc::common::Context;
     use wasmbus_rpc::error::RpcResult;
     pub use wasmcloud_interface_messaging::{
@@ -52,13 +54,12 @@ pub mod scanner_prelude {
         }
 
         /// Process the message received by `handle_message()`
-        // TODO: does this still timeout because it's technically an RPC call from the NATS provider?
         async fn process_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
             let params: ScanEndpointParams = serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
             let result = match self.scan(ctx, params).await {
                 Ok(result) => result,
                 Err(e) => ScanEndpointResult {
-                    finding: None,
+                    subdomain: None,
                     reason: Some(format!("{} failed: {}", Self::name(), e.to_string())),
                     success: false,
                 }
@@ -90,7 +91,9 @@ pub mod scanner_prelude {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 pub mod orchestrator_prelude {
+    pub use anyhow::Result;
     pub use crate::common::*;
     pub use crate::http_endpoint_scanner::{
         HttpEndpointScannerSender, ScanEndpointParams, ScanEndpointResult,
@@ -103,14 +106,18 @@ pub mod orchestrator_prelude {
     };
     pub use async_trait::async_trait;
     pub use futures::{stream, Future, FutureExt};
+    pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
+#[cfg(target_arch = "wasm32")]
 pub mod report_writer_prelude {
+    pub use anyhow::Result;
     pub use crate::common::*;
     pub use crate::report_writer::{
         Report, ReportWriter, ReportWriterReceiver, WriteReportResult,
     };
     pub use async_trait::async_trait;
+    pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
 impl ScanEndpointResult {

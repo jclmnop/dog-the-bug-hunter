@@ -410,11 +410,7 @@ pub fn decode_subdomain(
     };
     Ok(__result)
 }
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Subdomains {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub member: Option<Subdomain>,
-}
+pub type Subdomains = Vec<Subdomain>;
 
 // Encode Subdomains as CBOR and append to output stream
 #[doc(hidden)]
@@ -426,12 +422,9 @@ pub fn encode_subdomains<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(1)?;
-    if let Some(val) = val.member.as_ref() {
-        e.str("member")?;
-        encode_subdomain(e, val)?;
-    } else {
-        e.null()?;
+    e.array(val.len() as u64)?;
+    for item in val.iter() {
+        encode_subdomain(e, item)?;
     }
     Ok(())
 }
@@ -442,56 +435,23 @@ pub fn decode_subdomains(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<Subdomains, RpcError> {
     let __result = {
-        let mut member: Option<Option<Subdomain>> = Some(None);
-
-        let is_array = match d.datatype()? {
-            wasmbus_rpc::cbor::Type::Array => true,
-            wasmbus_rpc::cbor::Type::Map => false,
-            _ => {
-                return Err(RpcError::Deser(
-                    "decoding struct Subdomains, expected array or map"
-                        .to_string(),
-                ))
+        if let Some(n) = d.array()? {
+            let mut arr: Vec<Subdomain> = Vec::with_capacity(n as usize);
+            for _ in 0..(n as usize) {
+                arr.push(decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?)
             }
-        };
-        if is_array {
-            let len = d.fixed_array()?;
-            for __i in 0..(len as usize) {
-                match __i {
-                    0 => {
-                        member = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
-                        }
-                    }
-
-                    _ => d.skip()?,
-                }
-            }
+            arr
         } else {
-            let len = d.fixed_map()?;
-            for __i in 0..(len as usize) {
-                match d.str()? {
-                    "member" => {
-                        member = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
-                        }
-                    }
-                    _ => d.skip()?,
-                }
+            // indefinite array
+            let mut arr: Vec<Subdomain> = Vec::new();
+            loop {
+                match d.datatype() {
+                                Err(_) => break,
+                                Ok(wasmbus_rpc::cbor::Type::Break) => break,
+                                Ok(_) => arr.push(decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?)
+                            }
             }
-        }
-        Subdomains {
-            member: member.unwrap(),
+            arr
         }
     };
     Ok(__result)

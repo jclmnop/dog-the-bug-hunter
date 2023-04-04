@@ -19,7 +19,7 @@ crate-type = ["cdylib", "rlib"]
 async-trait.workspace = true
 serde.workspace = true
 serde_bytes = "0.11.5"
-wasmbus-rpc = "0.12.0"
+wasmbus-rpc.workspace = true
 
 # build-dependencies needed for build.rs
 [build-dependencies]

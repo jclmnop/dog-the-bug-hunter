@@ -7,6 +7,7 @@ metadata package = [ { namespace: "jclmnop.dtbh.interface.http_endpoint_scanner"
 namespace jclmnop.dtbh.interface.http_endpoint_scanner
 
 use jclmnop.dtbh.interface.common#Finding
+use jclmnop.dtbh.interface.common#Subdomain
 use org.wasmcloud.model#wasmbus
 
 /// Scans a target domain for vulnerabilities and generates a report if any
@@ -28,9 +29,9 @@ operation ScanEndpoint {
 
 /// Params for the scan. This schema will most likely change
 structure ScanEndpointParams {
-  /// The endpoint for scanning
+  /// The subdomain (which contains all its open ports) for scanning
   @required
-  endpoint: String,
+  subdomain: Subdomain,
   /// User ID is passed from the API, currently only used for logging purposes
   @required
   userId: String,
@@ -44,5 +45,5 @@ structure ScanEndpointResult {
   @required
   success: Boolean,
   reason: String,
-  finding: Finding,
+  subdomain: Subdomain,
 }

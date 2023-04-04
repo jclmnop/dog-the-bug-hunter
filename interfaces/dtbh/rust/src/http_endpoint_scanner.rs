@@ -25,9 +25,8 @@ pub const SMITHY_VERSION: &str = "1.0";
 /// Params for the scan. This schema will most likely change
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ScanEndpointParams {
-    /// The endpoint for scanning
-    #[serde(default)]
-    pub endpoint: String,
+    /// The subdomain (which contains all its open ports) for scanning
+    pub subdomain: crate::common::Subdomain,
     /// Optional string to be appended to user agent string, usually so the target
     /// is aware of the purpose of requests (an example would be <username>@wearehackerone)
     #[serde(rename = "userAgentTag")]
@@ -50,8 +49,8 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(3)?;
-    e.str("endpoint")?;
-    e.str(&val.endpoint)?;
+    e.str("subdomain")?;
+    crate::common::encode_subdomain(e, &val.subdomain)?;
     if let Some(val) = val.user_agent_tag.as_ref() {
         e.str("userAgentTag")?;
         e.str(val)?;
@@ -69,7 +68,7 @@ pub fn decode_scan_endpoint_params(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<ScanEndpointParams, RpcError> {
     let __result = {
-        let mut endpoint: Option<String> = None;
+        let mut subdomain: Option<crate::common::Subdomain> = None;
         let mut user_agent_tag: Option<Option<String>> = Some(None);
         let mut user_id: Option<String> = None;
 
@@ -86,45 +85,36 @@ pub fn decode_scan_endpoint_params(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => endpoint = Some(d.str()?.to_string()),
-                    1 => {
-                        user_agent_tag =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    2 => user_id = Some(d.str()?.to_string()),
+            0 => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),1 => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( d.str()?.to_string() ))
+                                    },
+                   2 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
-                }
+                    }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                    "endpoint" => endpoint = Some(d.str()?.to_string()),
-                    "userAgentTag" => {
-                        user_agent_tag =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
+                "subdomain" => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),"userAgentTag" => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( d.str()?.to_string() ))
+                                    },
+                   "userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
                     }
-                    "userId" => user_id = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
-                }
             }
         }
         ScanEndpointParams {
-            endpoint: if let Some(__x) = endpoint {
+            subdomain: if let Some(__x) = subdomain {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanEndpointParams.endpoint (#0)"
+                    "missing field ScanEndpointParams.subdomain (#0)"
                         .to_string(),
                 ));
             },
@@ -144,9 +134,9 @@ pub fn decode_scan_endpoint_params(
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ScanEndpointResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub finding: Option<crate::common::Finding>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subdomain: Option<crate::common::Subdomain>,
     /// False if there was an issue scanning the endpoint
     #[serde(default)]
     pub success: bool,
@@ -163,15 +153,15 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(3)?;
-    if let Some(val) = val.finding.as_ref() {
-        e.str("finding")?;
-        crate::common::encode_finding(e, val)?;
-    } else {
-        e.null()?;
-    }
     if let Some(val) = val.reason.as_ref() {
         e.str("reason")?;
         e.str(val)?;
+    } else {
+        e.null()?;
+    }
+    if let Some(val) = val.subdomain.as_ref() {
+        e.str("subdomain")?;
+        crate::common::encode_subdomain(e, val)?;
     } else {
         e.null()?;
     }
@@ -186,8 +176,9 @@ pub fn decode_scan_endpoint_result(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<ScanEndpointResult, RpcError> {
     let __result = {
-        let mut finding: Option<Option<crate::common::Finding>> = Some(None);
         let mut reason: Option<Option<String>> = Some(None);
+        let mut subdomain: Option<Option<crate::common::Subdomain>> =
+            Some(None);
         let mut success: Option<bool> = None;
 
         let is_array =
@@ -204,16 +195,6 @@ pub fn decode_scan_endpoint_result(
             for __i in 0..(len as usize) {
                 match __i {
                     0 => {
-                        finding = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( crate::common::decode_finding(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Finding': {}", e))? ))
-                        }
-                    }
-                    1 => {
                         reason =
                             if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                                 d.skip()?;
@@ -221,6 +202,16 @@ pub fn decode_scan_endpoint_result(
                             } else {
                                 Some(Some(d.str()?.to_string()))
                             }
+                    }
+                    1 => {
+                        subdomain = if wasmbus_rpc::cbor::Type::Null
+                            == d.datatype()?
+                        {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some( crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
+                        }
                     }
                     2 => success = Some(d.bool()?),
                     _ => d.skip()?,
@@ -230,16 +221,6 @@ pub fn decode_scan_endpoint_result(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                    "finding" => {
-                        finding = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( crate::common::decode_finding(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Finding': {}", e))? ))
-                        }
-                    }
                     "reason" => {
                         reason =
                             if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
@@ -249,14 +230,24 @@ pub fn decode_scan_endpoint_result(
                                 Some(Some(d.str()?.to_string()))
                             }
                     }
+                    "subdomain" => {
+                        subdomain = if wasmbus_rpc::cbor::Type::Null
+                            == d.datatype()?
+                        {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some( crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
+                        }
+                    }
                     "success" => success = Some(d.bool()?),
                     _ => d.skip()?,
                 }
             }
         }
         ScanEndpointResult {
-            finding: finding.unwrap(),
             reason: reason.unwrap(),
+            subdomain: subdomain.unwrap(),
 
             success: if let Some(__x) = success {
                 __x

@@ -16,8 +16,7 @@ impl ScannerModule for TemplateActor {
 
     #[instrument(name = "scan", skip(self, ctx))]
     async fn scan(&self, ctx: &Context, params: ScanEndpointParams) -> Result<ScanEndpointResult> {
-        info!("scan() called");
-        Ok(ScanEndpointResult::default())
+        todo!()
     }
 }
 

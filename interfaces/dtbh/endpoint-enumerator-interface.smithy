@@ -1,12 +1,15 @@
 // endpoint-enumerator-interface.smithy
 
 // Tell the code generator how to reference symbols defined in this namespace
-metadata package = [ { namespace: "jclmnop.provider.endpoint_enumerator", crate: "wasmcloud-interface-endpoint_enumerator" } ]
+metadata package = [ { namespace: "jclmnop.provider.endpoint_enumerator", crate: "crate::endpoint_enumerator" } ]
 
 namespace jclmnop.provider.endpoint_enumerator
 
 use org.wasmcloud.model#wasmbus
 use org.wasmcloud.model#U16
+use jclmnop.dtbh.interface.common#Subdomain
+use jclmnop.dtbh.interface.orchestrator#RunScansRequest
+use jclmnop.dtbh.interface.common#Subdomains
 
 // TODO: move this whole interface into dtbh
 
@@ -50,49 +53,6 @@ structure EnumerateEndpointsResponse {
   userId: String,
   reason: String,
   subdomains: Subdomains,
-}
-
-
-structure Port {
-  @required
-  port: U16,
-  isOpen: Boolean,
-  findings: Findings,
-}
-
-list Ports {
-  member: Port,
-}
-
-structure Subdomain {
-  @required
-  subdomain: String,
-  @required
-  openPorts: Ports
-}
-
-list Subdomains {
-  member: Subdomain,
-}
-
-structure Finding {
-  @required
-  url: String,
-  @required
-  findingType: String,
-}
-
-list Findings {
-  member: Finding,
-}
-
-// NOTE: from orchestrator
-structure RunScansRequest {
-  @required
-  userId: String,
-  /// The target to scan
-  @required
-  target: String,
 }
 
 

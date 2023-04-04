@@ -1,12 +1,12 @@
 use crate::common_ports::COMMON_PORTS;
 use anyhow::{anyhow, Result};
+use dtbh_interface::common::{Port, Subdomain};
 use futures::{stream, StreamExt};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tracing::{info, instrument, trace, warn};
-use wasmcloud_interface_endpoint_enumerator::{Port, Subdomain};
 
 #[instrument(level = "info", name = "scan_ports", fields(subdomain = %subdomain.subdomain))]
 pub async fn scan_ports(

@@ -1,7 +1,7 @@
 use anyhow::Result;
+use dtbh_interface::common::{Subdomain, Subdomains};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use wasmcloud_interface_endpoint_enumerator::{Subdomain, Subdomains};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct CrtShEntry {
