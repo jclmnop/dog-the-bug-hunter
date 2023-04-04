@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Overview
 > Note: This is a work in progress, and is not yet ready for production use.
 
@@ -40,18 +39,28 @@ providers to the super-constellation, on any cloud provider.
 - [ ] Test on local
 - [ ] Test on cosmonic
 - [ ] Test scaling on Railway/Digital Ocean
-- [ ] do i need to build a "middle-manager" provider to split up the work of the vulnerability scanning actors to get
-      round the 2 second RPC timeout?
-  - [ ] orchestrator splits job into chunks of 10 or so, converts to an array of NATS `PubMessage`s
-  - [ ] send array to middle manager, along with a specified delay (default 500ms maybe) and an array of NATS topics to publish to
-  - [ ] middle manager spawns a task
-    - [ ] publishes each NATS message to all the topics with the specified delay between each one
+- [x] **No I don't. Although there is a timeout error if `handle_message()` takes more 
+      than 2 seconds, the method still fully executes, so I'll just need to filter out the tracing logs later on**
+      ~~do i need to build a "middle-manager" provider to split up the work of the vulnerability scanning actors to get
+      round the 2 second RPC timeout?~~ 
+  - [ ] ~~orchestrator splits job into chunks of 10 or so, converts to an array of NATS `PubMessage`s~~
+  - [ ] ~~send array to middle manager, along with a specified delay (default 500ms maybe) and an array of NATS topics to publish to~~
+  - [ ] ~~middle manager spawns a task~~
+    - [ ] ~~publishes each NATS message to all the topics with the specified delay between each one~~
 
 ### Actors
-- [ ] Implement messaging to handle vulnerability scanner calls and callbacks
-- [ ] Implement messaging for report-writer
-- [ ] Implement messaging for orchestrator
-- [ ] Implement endpoint enumerator callback handling for orchestrator
+#### api-gateway
+- [ ] handle POST request to /scan?target=example.com
+- [ ] handle GET request to /reports
+- [ ] very basic auth for testing
+#### report-writer
+- [ ] Implement get_reports() rpc method
+- [ ] Implement message subscription for vulnerability scanner results + writing to KV storage
+#### orchestrator
+- [ ] implement handling from API Gateway -> endpoint enumerator
+- [ ] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel
+#### vulnerability-scanners
+- [x] message handling (sub + pub)
 - [ ] Implement at least 4 different vulnerability scanners
 
 ### Providers
