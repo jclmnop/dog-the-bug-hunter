@@ -9,10 +9,11 @@ use wasmbus_rpc::common::deserialize;
 use wasmbus_rpc::core::Invocation;
 use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
-use wasmcloud_interface_endpoint_enumerator::{
+use dtbh_interface::endpoint_enumerator::{
     EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse,
-    Port, RunScansRequest, Subdomains,
 };
+use dtbh_interface::orchestrator::RunScansRequest;
+use dtbh_interface::common::{ Port, Subdomains };
 use wasmcloud_test_util::{
     check, cli::print_test_results, provider_test::test_provider,
     testing::TestOptions,

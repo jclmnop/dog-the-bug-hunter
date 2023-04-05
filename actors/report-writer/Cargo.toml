@@ -15,7 +15,7 @@ async-trait.workspace = true
 wasmbus-rpc.workspace = true
 wasmcloud-interface-logging.workspace = true
 wasmcloud-interface-keyvalue.workspace = true
-dtbh_interface.workspace = true
+dtbh_interface = { workspace = true, features = ["actor"] }
 serde.workspace = true
 serde_json.workspace = true
 

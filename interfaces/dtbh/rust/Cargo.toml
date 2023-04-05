@@ -33,3 +33,5 @@ base64.workspace = true
 [build-dependencies]
 weld-codegen.workspace = true
 
+[features]
+actor = []

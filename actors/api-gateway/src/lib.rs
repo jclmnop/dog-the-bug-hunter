@@ -12,6 +12,13 @@ const CALL_ALIAS: &str = "dtbh/api-gateway";
 #[services(Actor, HttpServer)]
 struct ApiGatewayActor {}
 
+//TODO: UI request for '/' path
+enum RequestType {
+    GetReports(GetReportsRequest),
+    Scan(ScanRequest),
+    Invalid(Error),
+}
+
 //TODO: auth
 //TODO: better error handling
 #[async_trait]
@@ -21,20 +28,65 @@ impl HttpServer for ApiGatewayActor {
         ctx: &Context,
         req: &HttpRequest,
     ) -> RpcResult<HttpResponse> {
-        match RequestType::from(req.to_owned()) {
-            RequestType::GetReports(reports_request) => {
-                Ok(get_reports(ctx, reports_request)
+        if auth(ctx, req).await {
+            match RequestType::from(req.to_owned()) {
+                RequestType::GetReports(reports_request) => {
+                    Ok(get_reports(ctx, reports_request)
+                        .await
+                        .unwrap_or(HttpResponse::not_found()))
+                }
+                RequestType::Scan(scan_request) => Ok(scan(ctx, scan_request)
                     .await
-                    .unwrap_or(HttpResponse::not_found()))
+                    .unwrap_or(HttpResponse::not_found())),
+                RequestType::Invalid(e) => {
+                    error!("{e}");
+                    Ok(HttpResponse::not_found())
+                }
             }
-            RequestType::Scan(scan_request) => {
-                todo!()
-            }
-            RequestType::Invalid(e) => {
-                error!("{e}");
-                Ok(HttpResponse::not_found())
-            }
+        } else {
+            Ok(HttpResponse {
+                status_code: 401,
+                header: Default::default(),
+                body: vec![],
+            })
         }
+    }
+}
+
+async fn auth(ctx: &Context, req: &HttpRequest) -> bool {
+    //TODO!
+    true
+}
+
+async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
+    debug!("Scan request: {:#?}", req);
+    let orchestrator: OrchestratorSender<_> =
+        OrchestratorSender::to_actor("dtbh/orchestrator");
+    let targets = req.targets;
+    let mut failures: Vec<String> = vec![];
+
+    for target in targets {
+        //TODO: add user agent tag
+        let scan_req = RunScansRequest {
+            target: target.clone(),
+            user_id: req.user_id.clone(),
+        };
+        match orchestrator.run_scans(ctx, &scan_req).await {
+            Ok(success) if success => {}
+            _ => failures.push(target),
+        }
+    }
+
+    if failures.is_empty() {
+        Ok(HttpResponse::ok(vec![]))
+    } else {
+        let mut error_string =
+            String::from("The following targets failed to begin scanning:");
+        failures
+            .into_iter()
+            .for_each(|f| error_string.extend(format!("\n\t{f}").chars()));
+        let mut response = HttpResponse::internal_server_error(error_string);
+        Ok(response)
     }
 }
 
@@ -67,13 +119,6 @@ async fn get_reports(
             Ok(HttpResponse::not_found())
         }
     }
-}
-
-//TODO: UI request for '/' path
-enum RequestType {
-    GetReports(GetReportsRequest),
-    Scan(ScanRequest),
-    Invalid(Error),
 }
 
 impl From<HttpRequest> for RequestType {

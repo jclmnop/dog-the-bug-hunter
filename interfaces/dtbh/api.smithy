@@ -10,7 +10,7 @@ structure ScanRequest {
     @required
     userId: String,
     @required,
-    targets: String,
+    targets: Targets,
     userAgentTag: String,
     // TODO: config for optional fuzzing + specific params?
 }

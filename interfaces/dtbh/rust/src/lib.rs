@@ -15,7 +15,7 @@ pub use api::*;
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
 pub const RESULTS_TOPIC: &str = "dtbh.results";
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "actor")]
 pub mod scanner_prelude {
     pub use crate::common::*;
     pub use crate::http_endpoint_scanner::{
@@ -93,7 +93,7 @@ pub mod scanner_prelude {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "actor")]
 pub mod orchestrator_prelude {
     pub use anyhow::Result;
     pub use crate::common::*;
@@ -111,7 +111,7 @@ pub mod orchestrator_prelude {
     pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "actor")]
 pub mod report_writer_prelude {
     pub use anyhow::Result;
     pub use crate::common::*;
@@ -122,6 +122,7 @@ pub mod report_writer_prelude {
     pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
+#[cfg(feature = "actor")]
 pub mod api_gateway_prelude {
     use anyhow::anyhow;
     pub use anyhow::Result;
