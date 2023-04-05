@@ -32,5 +32,6 @@ structure RunScansRequest {
   /// The target to scan
   @required
   target: String,
+  //TODO: add user agent tag
 }
 

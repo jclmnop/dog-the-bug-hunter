@@ -15,7 +15,8 @@ files = [
     "report_writer.smithy",
     "common.smithy",
     "orchestrator.smithy",
-    "endpoint-enumerator-interface.smithy"
+    "endpoint-enumerator-interface.smithy",
+    "api.smithy"
 ]
 
 [[models]]
@@ -84,3 +85,6 @@ namespace = "jclmnop.dtbh.interface.common"
 [[rust.files]]
 path = "src/endpoint_enumerator.rs"
 namespace = "jclmnop.provider.endpoint_enumerator"
+[[rust.files]]
+path = "src/api.rs"
+namespace = "jclmnop.dtbh.interface.api"

@@ -196,6 +196,133 @@ pub fn decode_get_reports_request(
     Ok(__result)
 }
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct GetReportsResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reports: Option<Reports>,
+    #[serde(default)]
+    pub success: bool,
+}
+
+// Encode GetReportsResult as CBOR and append to output stream
+#[doc(hidden)]
+#[allow(unused_mut)]
+pub fn encode_get_reports_result<W: wasmbus_rpc::cbor::Write>(
+    mut e: &mut wasmbus_rpc::cbor::Encoder<W>,
+    val: &GetReportsResult,
+) -> RpcResult<()>
+where
+    <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
+{
+    e.map(3)?;
+    if let Some(val) = val.reason.as_ref() {
+        e.str("reason")?;
+        e.str(val)?;
+    } else {
+        e.null()?;
+    }
+    if let Some(val) = val.reports.as_ref() {
+        e.str("reports")?;
+        encode_reports(e, val)?;
+    } else {
+        e.null()?;
+    }
+    e.str("success")?;
+    e.bool(val.success)?;
+    Ok(())
+}
+
+// Decode GetReportsResult from cbor input stream
+#[doc(hidden)]
+pub fn decode_get_reports_result(
+    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
+) -> Result<GetReportsResult, RpcError> {
+    let __result = {
+        let mut reason: Option<Option<String>> = Some(None);
+        let mut reports: Option<Option<Reports>> = Some(None);
+        let mut success: Option<bool> = None;
+
+        let is_array =
+            match d.datatype()? {
+                wasmbus_rpc::cbor::Type::Array => true,
+                wasmbus_rpc::cbor::Type::Map => false,
+                _ => return Err(RpcError::Deser(
+                    "decoding struct GetReportsResult, expected array or map"
+                        .to_string(),
+                )),
+            };
+        if is_array {
+            let len = d.fixed_array()?;
+            for __i in 0..(len as usize) {
+                match __i {
+                    0 => {
+                        reason =
+                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                d.skip()?;
+                                Some(None)
+                            } else {
+                                Some(Some(d.str()?.to_string()))
+                            }
+                    }
+                    1 => {
+                        reports = if wasmbus_rpc::cbor::Type::Null
+                            == d.datatype()?
+                        {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some( decode_reports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}", e))? ))
+                        }
+                    }
+                    2 => success = Some(d.bool()?),
+                    _ => d.skip()?,
+                }
+            }
+        } else {
+            let len = d.fixed_map()?;
+            for __i in 0..(len as usize) {
+                match d.str()? {
+                    "reason" => {
+                        reason =
+                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                d.skip()?;
+                                Some(None)
+                            } else {
+                                Some(Some(d.str()?.to_string()))
+                            }
+                    }
+                    "reports" => {
+                        reports = if wasmbus_rpc::cbor::Type::Null
+                            == d.datatype()?
+                        {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some( decode_reports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}", e))? ))
+                        }
+                    }
+                    "success" => success = Some(d.bool()?),
+                    _ => d.skip()?,
+                }
+            }
+        }
+        GetReportsResult {
+            reason: reason.unwrap(),
+            reports: reports.unwrap(),
+
+            success: if let Some(__x) = success {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field GetReportsResult.success (#2)".to_string(),
+                ));
+            },
+        }
+    };
+    Ok(__result)
+}
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Report {
     /// The findings for the report are stored in the open
     /// ports for each subdomain.
@@ -467,7 +594,7 @@ pub trait ReportWriter {
         &self,
         ctx: &Context,
         arg: &GetReportsRequest,
-    ) -> RpcResult<Reports>;
+    ) -> RpcResult<GetReportsResult>;
 }
 
 /// ReportWriterReceiver receives messages defined in the ReportWriter service trait
@@ -596,7 +723,7 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter
         &self,
         ctx: &Context,
         arg: &GetReportsRequest,
-    ) -> RpcResult<Reports> {
+    ) -> RpcResult<GetReportsResult> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self
@@ -611,8 +738,10 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter
             )
             .await?;
 
-        let value: Reports = wasmbus_rpc::common::deserialize(&resp)
-            .map_err(|e| RpcError::Deser(format!("'{}': Reports", e)))?;
+        let value: GetReportsResult = wasmbus_rpc::common::deserialize(&resp)
+            .map_err(|e| {
+            RpcError::Deser(format!("'{}': GetReportsResult", e))
+        })?;
         Ok(value)
     }
 }

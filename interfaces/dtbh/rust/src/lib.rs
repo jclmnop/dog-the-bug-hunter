@@ -9,6 +9,8 @@ pub mod report_writer;
 pub use report_writer::*;
 pub mod endpoint_enumerator;
 pub use endpoint_enumerator::*;
+pub mod api;
+pub use api::*;
 
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
 pub const RESULTS_TOPIC: &str = "dtbh.results";
@@ -120,15 +122,24 @@ pub mod report_writer_prelude {
     pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
-impl ScanEndpointResult {
-    #[must_use]
-    pub fn is_success(&self) -> bool {
-        self.success
-    }
-}
+pub mod api_gateway_prelude {
+    use anyhow::anyhow;
+    pub use anyhow::Result;
+    pub use wasmcloud_interface_logging::{debug, error, info};
+    pub use crate::common::*;
+    pub use crate::report_writer::{GetReportsRequest, GetReportsResult, ReportWriter, ReportWriterSender};
+    pub use crate::orchestrator::{RunScansRequest, OrchestratorSender, Orchestrator};
+    pub use crate::api::ScanRequest;
+    pub use crate::Reports;
 
-impl WriteReportResult {
-    pub fn is_success(&self) -> bool {
-        self.success
+    //TODO: make a trait for this and impl for other "result" types?
+    impl GetReportsResult {
+        pub fn result<'a>(&'a self) -> Result<&'a Option<Reports>> {
+            if self.success {
+                Ok(&self.reports)
+            } else {
+                Err(anyhow!("Error fetching reports: {}", self.reason.clone().unwrap_or("unknown".to_string())))
+            }
+        }
     }
 }

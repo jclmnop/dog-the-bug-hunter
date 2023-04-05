@@ -35,7 +35,7 @@ structure WriteReportResult {
 
 operation GetReports {
   input: GetReportsRequest,
-  output: Reports,
+  output: GetReportsResult,
 }
 
 structure GetReportsRequest {
@@ -47,6 +47,13 @@ structure GetReportsRequest {
   startTimestamp: Timestamp,
   /// If not specified, defaults to latest report
   endTimestamp: Timestamp,
+}
+
+structure GetReportsResult {
+  @required
+  success: Boolean,
+  reason: String,
+  reports: Reports,
 }
 
 structure Report {

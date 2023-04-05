@@ -1,6 +1,7 @@
 # Overview
-> Note: This is a work in progress, and is not yet ready for production use.
-
+> Note: This is a work in progress for the Cosmonic Hackathon. It is not yet ready for production use, and probably never will be.
+> 
+> I'm not a security expert, this tool will most likely yield a lot of false positives/false negatives.
 
 A distributed, modular, cloud-native automated vulnerability scanner for bug bounty hunting. The user pushes a queue of
 target domains and their endpoints (subdomains + open ports) are enumerated sequentially (or in parallel if this ever 
@@ -9,6 +10,11 @@ becomes a paid service), which are then passed to vulnerability scanners to be s
 New types of vulnerability scanners can be added without any configuration, thanks to the actor model and 
 NATS pub/sub messaging. All types of vulnerability scans run in parallel, and the results are aggregated and written to a
 report which is only accessible to the user who submitted the request to scan the target.
+
+Although it's intended to be hosted on a [Cosmonic](https://cosmonic.com/) managed wasmCloud host, 
+using the [super-constellation](https://cosmonic.com/docs/user_guide/superconstellations) functionality for
+extra scalability, the same can be achieved with self-managed wasmCloud hosts 
+[bridged via NGS](https://wasmcloud.com/docs/reference/lattice/ngs/). 
 
 ## Architecture
 ![img.png](img.png)
@@ -30,11 +36,8 @@ RequestTimestamp) using the KV storage provider.
 The system can be easily scaled by adding more vulnerability scanner actors and more endpoint enumerator + Http-Client 
 providers to the super-constellation, on any cloud provider.  
 
-
-
-
 # TODO
-## Necessary for PoC
+## Necessary for Hackathon PoC
 ### General
 - [ ] Test on local
 - [ ] Test on cosmonic
@@ -50,18 +53,23 @@ providers to the super-constellation, on any cloud provider.
 
 ### Actors
 #### api-gateway
-- [ ] handle POST request to /scan?target=example.com
-- [ ] handle GET request to /reports
+- [ ] handle POST request to /scan
+- [x] handle POST request to /reports (POST bc it will require auth)
 - [ ] very basic auth for testing
+- [ ] improve error handling
 #### report-writer
 - [ ] Implement get_reports() rpc method
 - [ ] Implement message subscription for vulnerability scanner results + writing to KV storage
 #### orchestrator
-- [ ] implement handling from API Gateway -> endpoint enumerator
-- [ ] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel
+- [x] implement handling from API Gateway -> endpoint enumerator
+- [x] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel
 #### vulnerability-scanners
 - [x] message handling (sub + pub)
 - [ ] Implement at least 4 different vulnerability scanners
+#### ui-actor
+- [ ] only if everything else is finished first
+- [ ] single page leptos app embedded in actor binary
+- [ ] login/auth -> (view_reports_form | scan_form)
 
 ### Providers
 #### Endpoint Enumerator
