@@ -33,8 +33,7 @@ pub struct GetReportsRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_timestamp: Option<Timestamp>,
     /// If no target is specified, all target reports for the given time range will be returned
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target: Option<String>,
+    pub target: crate::api::Targets,
     #[serde(rename = "userId")]
     #[serde(default)]
     pub user_id: String,
@@ -65,12 +64,8 @@ where
     } else {
         e.null()?;
     }
-    if let Some(val) = val.target.as_ref() {
-        e.str("target")?;
-        e.str(val)?;
-    } else {
-        e.null()?;
-    }
+    e.str("target")?;
+    crate::api::encode_targets(e, &val.target)?;
     e.str("userId")?;
     e.str(&val.user_id)?;
     Ok(())
@@ -84,7 +79,7 @@ pub fn decode_get_reports_request(
     let __result = {
         let mut end_timestamp: Option<Option<Timestamp>> = Some(None);
         let mut start_timestamp: Option<Option<Timestamp>> = Some(None);
-        let mut target: Option<Option<String>> = Some(None);
+        let mut target: Option<crate::api::Targets> = None;
         let mut user_id: Option<String> = None;
 
         let is_array =
@@ -100,89 +95,53 @@ pub fn decode_get_reports_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => {
-                        end_timestamp =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(wasmbus_rpc::Timestamp {
-                                    sec: d.i64()?,
-                                    nsec: d.u32()?,
-                                }))
-                            }
-                    }
-                    1 => {
-                        start_timestamp =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(wasmbus_rpc::Timestamp {
-                                    sec: d.i64()?,
-                                    nsec: d.u32()?,
-                                }))
-                            }
-                    }
-                    2 => {
-                        target =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    3 => user_id = Some(d.str()?.to_string()),
+            0 => end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
+                                    },
+                   1 => start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
+                                    },
+                   2 => target = Some(crate::api::decode_targets(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e))?),3 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
-                }
+                    }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                    "endTimestamp" => {
-                        end_timestamp =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(wasmbus_rpc::Timestamp {
-                                    sec: d.i64()?,
-                                    nsec: d.u32()?,
-                                }))
-                            }
+                "endTimestamp" => end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
+                                    },
+                   "startTimestamp" => start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                                        d.skip()?;
+                                        Some(None)
+                                    } else {
+                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
+                                    },
+                   "target" => target = Some(crate::api::decode_targets(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e))?),"userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
                     }
-                    "startTimestamp" => {
-                        start_timestamp =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(wasmbus_rpc::Timestamp {
-                                    sec: d.i64()?,
-                                    nsec: d.u32()?,
-                                }))
-                            }
-                    }
-                    "target" => {
-                        target =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    "userId" => user_id = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
-                }
             }
         }
         GetReportsRequest {
             end_timestamp: end_timestamp.unwrap(),
             start_timestamp: start_timestamp.unwrap(),
-            target: target.unwrap(),
+
+            target: if let Some(__x) = target {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field GetReportsRequest.target (#2)".to_string(),
+                ));
+            },
 
             user_id: if let Some(__x) = user_id {
                 __x

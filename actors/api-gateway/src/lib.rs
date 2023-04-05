@@ -148,3 +148,119 @@ impl From<HttpRequest> for RequestType {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use super::*;
+    use webassembly_test::webassembly_test;
+    use wasmbus_rpc::Timestamp;
+
+    #[webassembly_test]
+    fn test_parse_req_type_scan() {
+        let valid_scan_req = ScanRequest {
+            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"].into_iter().map(|s| s.to_string()).collect(),
+            user_id: "test".to_string(),
+            user_agent_tag: None,
+        };
+        let valid_http_req = HttpRequest {
+            body: serde_json::to_vec(&valid_scan_req).unwrap(),
+            method: "post".to_string(),
+            path: "/scan".to_string(),
+            header: HashMap::new(),
+            query_string: String::new(),
+        };
+
+        let parsed_req = RequestType::from(valid_http_req);
+        if let RequestType::Scan(req) = parsed_req {
+            assert_eq!(valid_scan_req, req);
+        } else {
+            panic!();
+        }
+    }
+
+    #[webassembly_test]
+    fn test_parse_req_type_get_reports() {
+        let valid_get_reports_req = GetReportsRequest {
+            user_id: "test".to_string(),
+            target: vec!["www.google.com".to_string()],
+            start_timestamp: None,
+            end_timestamp: Some(Timestamp::new(420, 69).unwrap()),
+        };
+
+        let valid_http_req = HttpRequest {
+            body: serde_json::to_vec(&valid_get_reports_req).unwrap(),
+            method: "post".to_string(),
+            path: "/reports".to_string(),
+            header: HashMap::new(),
+            query_string: String::new(),
+        };
+
+        let parsed_req = RequestType::from(valid_http_req);
+        if let RequestType::GetReports(req) = parsed_req {
+            assert_eq!(valid_get_reports_req, req);
+        } else {
+            panic!();
+        }
+    }
+
+    #[webassembly_test]
+    fn test_parse_req_type_invalid() {
+        let valid_scan_req = ScanRequest {
+            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"].into_iter().map(|s| s.to_string()).collect(),
+            user_id: "test".to_string(),
+            user_agent_tag: None,
+        };
+        let valid_get_reports_req = GetReportsRequest {
+            user_id: "test".to_string(),
+            target: vec!["www.google.com".to_string()],
+            start_timestamp: None,
+            end_timestamp: Some(Timestamp::new(420, 69).unwrap()),
+        };
+        let invalid_http_requests = vec![
+            HttpRequest {
+                body: serde_json::to_vec(&valid_get_reports_req).unwrap(),
+                method: "post".to_string(),
+                path: "/scan".to_string(),
+                header: HashMap::new(),
+                query_string: String::new(),
+            },
+            HttpRequest {
+                body: serde_json::to_vec(&valid_scan_req).unwrap(),
+                method: "get".to_string(),
+                path: "/scan".to_string(),
+                header: HashMap::new(),
+                query_string: String::new(),
+            },
+            HttpRequest {
+                body: serde_json::to_vec(&valid_scan_req).unwrap(),
+                method: "post".to_string(),
+                path: "/reports".to_string(),
+                header: HashMap::new(),
+                query_string: String::new(),
+            },
+            HttpRequest {
+                body: serde_json::to_vec(&valid_scan_req).unwrap(),
+                method: "post".to_string(),
+                path: "/reports".to_string(),
+                header: HashMap::new(),
+                query_string: String::new(),
+            },
+            HttpRequest {
+                body: serde_json::to_vec(&valid_scan_req).unwrap(),
+                method: "postsdfs".to_string(),
+                path: "/invalid_path".to_string(),
+                header: HashMap::new(),
+                query_string: String::new(),
+            },
+        ];
+
+        for req in invalid_http_requests {
+            match RequestType::from(req) {
+                RequestType::Invalid(_) => {}
+                _ => panic!(),
+            }
+        }
+    }
+}

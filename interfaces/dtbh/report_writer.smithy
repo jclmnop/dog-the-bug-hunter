@@ -8,6 +8,7 @@ namespace jclmnop.dtbh.interface.report_writer
 
 use jclmnop.dtbh.interface.common#Findings
 use jclmnop.dtbh.interface.common#Subdomains
+use jclmnop.dtbh.interface.api#Targets
 use org.wasmcloud.model#wasmbus
 use org.wasmcloud.model#U32
 
@@ -42,7 +43,8 @@ structure GetReportsRequest {
   @required
   userId: String,
   /// If no target is specified, all target reports for the given time range will be returned
-  target: String,
+  @required
+  target: Targets,
   /// If not specified, defaults to earliest report
   startTimestamp: Timestamp,
   /// If not specified, defaults to latest report
