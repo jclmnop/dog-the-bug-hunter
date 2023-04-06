@@ -50,7 +50,8 @@ providers to the super-constellation, on any cloud provider.
 # TODO
 ## Necessary for Hackathon PoC
 ### General
-- [ ] Decide between KV/SQL/surrealDB for storing reports
+- [ ] Decide between KV/SQL/surrealDB for storing reports (leaning towards surrealDB)
+  - [ ] build a surrealDB provider?
 - [ ] Test on local
 - [ ] Test on cosmonic
 - [ ] Test scaling on Railway/Digital Ocean
@@ -70,7 +71,10 @@ providers to the super-constellation, on any cloud provider.
 #### api-gateway
 - [x] handle POST request to /scan
 - [x] handle POST request to /reports (POST bc it will require auth)
-- [ ] very basic auth for testing
+- [ ] very basic auth for testing (surrealDB?)
+  - [ ] sign up
+  - [ ] sign in
+  - [ ] JWT auth token?
 - [ ] improve error handling
 #### report-writer
 - [x] Implement message subscription for vulnerability scanner results 
@@ -81,7 +85,11 @@ providers to the super-constellation, on any cloud provider.
 - [x] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel
 #### vulnerability-scanners
 - [x] message handling (sub + pub)
-- [ ] Implement at least 4 different vulnerability scanners
+- [ ] Implement at least 4 different vulnerability scanners, can be fairly simple
+  - [ ] elasticsearch unauthenticated access 
+  - [ ] dotenv disclosure
+  - [ ] basic SQLi?
+  - [ ] a recent CVE
 #### ui-actor
 - [ ] only if everything else is finished first
 - [ ] single page leptos app embedded in actor binary
@@ -91,6 +99,17 @@ providers to the super-constellation, on any cloud provider.
 #### Endpoint Enumerator
 - [x] Implement task queue so multiple targets can be submitted at once, and the provider can work through them with a 
       configurable concurrency value in the link definition
+#### SurrealDB
+- [ ] simple functions
+  - [ ] query
+  - [ ] execute?
+  - [ ] signup
+  - [ ] signin
+#### "wasmcloud:timing" interface + provider
+Probably won't need this one myself anymore, but will still publish it
+- [x] publish interface to crate
+- [x] publish provider to OCI
+- [ ] add to wasmcloud examples repo
 
 ## Nice to haves
 - [ ] Open telemetry
