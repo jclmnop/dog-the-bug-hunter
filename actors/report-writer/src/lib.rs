@@ -1,22 +1,63 @@
-use anyhow::Result;
 use dtbh_interface::scanner_prelude::*;
 use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_httpclient::*;
-use wasmcloud_interface_logging::{error, info};
+use wasmcloud_interface_messaging::{MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver};
+use wasmcloud_interface_sqldb::{SqlDbSender, SqlDbError, Statement, ExecuteResult, QueryResult};
+use dtbh_interface::{GetReportsRequest, GetReportsResult};
+use dtbh_interface::report_writer_prelude::*;
+use sqlx_core::query_builder::QueryBuilder;
 
-const CALL_ALIAS: &str = "dtb/scanner/<template>";
+const CALL_ALIAS: &str = "dtbh/report-writer";
+const PUB_TOPIC: &str = "dtbh.reports.out";
 
 #[derive(Debug, Default, Actor, HealthResponder)]
-#[services(Actor, HttpEndpointScanner)]
-struct TemplateActor {}
+#[services(Actor, MessageSubscriber, Messaging, ReportWriter)]
+struct ReportActor {}
 
 #[async_trait]
-impl HttpEndpointScanner for TemplateActor {
-    async fn scan_endpoint(
-        &self,
-        ctx: &Context,
-        params: &ScanEndpointParams,
-    ) -> RpcResult<ScanEndpointResult> {
-        todo!("Implement scan_endpoint for this specific vulnerability scanner")
+impl ReportWriter for ReportActor {
+    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult> {
+        todo!()
     }
+
+    async fn get_reports(&self, ctx: &Context, arg: &GetReportsRequest) -> RpcResult<GetReportsResult> {
+        todo!()
+    }
+}
+
+#[async_trait]
+impl MessageSubscriber for ReportActor {
+    /// Topic: `dtbh.reports.in`
+    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+        let report: Report = serde_json::from_slice(&msg.body)?;
+        let report_json = serde_json::to_string_pretty(&report)?;
+        let pub_msg = PubMessage {
+            subject: PUB_TOPIC.to_string(),
+            reply_to: None,
+            body: serde_json::to_vec(&report_json)?,
+        };
+        let publisher: MessagingSender<_> = MessagingSender::new();
+        publisher.publish(ctx, &pub_msg).await
+
+        //TODO: write to db
+    }
+}
+
+async fn write_report_to_db(ctx: &Context, report: &Report) -> Result<WriteReportResult> {
+    todo!()
+}
+
+//TODO: open a PR for wasmcloud postgres provider to implement prepared statements
+fn escape_and_quote(value: &str) -> String {
+    // Enough capacity to escape an entire string of `'` or `\` characters and surround it
+    // with single quotes
+    let mut escaped = String::with_capacity(value.len() * 2 + 2);
+    escaped.push('\'');
+    for c in value.chars() {
+        if c == '\'' || c == '\\' {
+            escaped.push('\\');
+        }
+        escaped.push(c);
+    }
+    escaped.push('\'');
+    escaped
 }

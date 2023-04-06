@@ -4,7 +4,7 @@ type = "actor"
 version = "0.1.0"
 
 [actor]
-claims = ["wasmcloud:sqldb", "wasmcloud:builtin:logging"]
+claims = ["wasmcloud:sqldb", "wasmcloud:builtin:logging", "wasmcloud:messaging"]
 call-alias = "dtbh/report-writer"
 
 [rust]

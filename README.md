@@ -36,12 +36,27 @@ RequestTimestamp) using the KV storage provider.
 The system can be easily scaled by adding more vulnerability scanner actors and more endpoint enumerator + Http-Client 
 providers to the super-constellation, on any cloud provider.  
 
+### NATS Topics
+- `dtbh.tasks`
+    - `pub`: `orchestrator`
+    - `sub`: `scanner-modules`
+- `dtbh.reports.in`
+    - `pub`: `scanner-modules`
+    - `sub`: `report-writer`
+- `dtbh.reports.out`
+    - `pub`: `report-writer`
+    - `sub`: external
+
 # TODO
 ## Necessary for Hackathon PoC
 ### General
+- [ ] Decide between KV/SQL/surrealDB for storing reports
 - [ ] Test on local
 - [ ] Test on cosmonic
 - [ ] Test scaling on Railway/Digital Ocean
+- [ ] Refactor interfaces
+  - [ ] remove some "services"
+  - [x] merge endpoint-enuemrator interface with dtbh interface
 - [x] **No I don't. Although there is a timeout error if `handle_message()` takes more 
       than 2 seconds, the method still fully executes, so I'll just need to filter out the tracing logs later on**
       ~~do i need to build a "middle-manager" provider to split up the work of the vulnerability scanning actors to get
@@ -58,8 +73,9 @@ providers to the super-constellation, on any cloud provider.
 - [ ] very basic auth for testing
 - [ ] improve error handling
 #### report-writer
+- [x] Implement message subscription for vulnerability scanner results 
+- [ ] write results to storage
 - [ ] Implement get_reports() rpc method
-- [ ] Implement message subscription for vulnerability scanner results + writing to KV storage
 #### orchestrator
 - [x] implement handling from API Gateway -> endpoint enumerator
 - [x] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel

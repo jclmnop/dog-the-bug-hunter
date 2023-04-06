@@ -13,7 +13,7 @@ pub mod api;
 pub use api::*;
 
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
-pub const RESULTS_TOPIC: &str = "dtbh.results";
+pub const PUB_RESULTS_TOPIC: &str = "dtbh.reports.in";
 
 #[cfg(feature = "actor")]
 pub mod scanner_prelude {
@@ -32,7 +32,7 @@ pub mod scanner_prelude {
         MessageSubscriber, MessagingSender, Messaging, PubMessage, SubMessage, MessageSubscriberReceiver,
     };
     pub use wasmcloud_interface_httpclient::*;
-    use crate::{RESULTS_TOPIC, TASKS_TOPIC};
+    use crate::{PUB_RESULTS_TOPIC, TASKS_TOPIC};
 
     /// Scanner module actor to be wrapped by `MessageHandler`. Only the `scan()`
     /// method is required to be implemented.
@@ -47,7 +47,7 @@ pub mod scanner_prelude {
 
         /// The topic for publishing results, (default: dtbh.results)
         fn pub_topic() -> &'static str {
-            RESULTS_TOPIC
+            PUB_RESULTS_TOPIC
         }
 
         #[allow(dead_code)]
