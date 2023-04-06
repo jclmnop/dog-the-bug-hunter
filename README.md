@@ -53,7 +53,7 @@ providers to the super-constellation, on any cloud provider.
 
 ### Actors
 #### api-gateway
-- [ ] handle POST request to /scan
+- [x] handle POST request to /scan
 - [x] handle POST request to /reports (POST bc it will require auth)
 - [ ] very basic auth for testing
 - [ ] improve error handling
