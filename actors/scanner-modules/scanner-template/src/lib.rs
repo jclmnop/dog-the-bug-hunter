@@ -1,6 +1,5 @@
 use dtbh_interface::scanner_prelude::*;
 use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_logging::{error, info};
 
 const CALL_ALIAS: &str = "dtb/scanner/<template>";
 
@@ -14,17 +13,21 @@ impl ScannerModule for TemplateActor {
         "template"
     }
 
-    async fn scan(&self, ctx: &Context, params: ScanEndpointParams) -> Result<ScanEndpointResult> {
+    async fn scan(&self, ctx: &Context, target_endpoint: String) -> RpcResult<Option<Finding>> {
         todo!()
     }
 }
 
 // Wrap `ScannerModule::process_message()` in `MessageSubscriber::handle_message()`, nothing
 // else needs to be done for message handling.
+//TODO: derive macro?
 #[async_trait]
 impl MessageSubscriber for TemplateActor {
-    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+    async fn handle_message(
+        &self,
+        ctx: &Context,
+        msg: &SubMessage,
+    ) -> RpcResult<()> {
         self.process_message(ctx, msg).await
     }
 }
-
