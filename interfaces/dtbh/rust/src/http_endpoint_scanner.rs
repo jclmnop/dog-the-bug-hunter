@@ -27,6 +27,10 @@ pub const SMITHY_VERSION: &str = "1.0";
 pub struct ScanEndpointParams {
     /// The subdomain (which contains all its open ports) for scanning
     pub subdomain: crate::common::Subdomain,
+    #[serde(default)]
+    pub target: String,
+    #[serde(default)]
+    pub timestamp: Timestamp,
     /// Optional string to be appended to user agent string, usually so the target
     /// is aware of the purpose of requests (an example would be <username>@wearehackerone)
     #[serde(rename = "userAgentTag")]
@@ -48,9 +52,14 @@ pub fn encode_scan_endpoint_params<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(3)?;
+    e.map(5)?;
     e.str("subdomain")?;
     crate::common::encode_subdomain(e, &val.subdomain)?;
+    e.str("target")?;
+    e.str(&val.target)?;
+    e.str("timestamp")?;
+    e.i64(val.timestamp.sec)?;
+    e.u32(val.timestamp.nsec)?;
     if let Some(val) = val.user_agent_tag.as_ref() {
         e.str("userAgentTag")?;
         e.str(val)?;
@@ -69,6 +78,8 @@ pub fn decode_scan_endpoint_params(
 ) -> Result<ScanEndpointParams, RpcError> {
     let __result = {
         let mut subdomain: Option<crate::common::Subdomain> = None;
+        let mut target: Option<String> = None;
+        let mut timestamp: Option<Timestamp> = None;
         let mut user_agent_tag: Option<Option<String>> = Some(None);
         let mut user_id: Option<String> = None;
 
@@ -85,13 +96,13 @@ pub fn decode_scan_endpoint_params(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),1 => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+            0 => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),1 => target = Some(d.str()?.to_string()),2 => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),3 => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                                         d.skip()?;
                                         Some(None)
                                     } else {
                                         Some(Some( d.str()?.to_string() ))
                                     },
-                   2 => user_id = Some(d.str()?.to_string()),
+                   4 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                     }
             }
@@ -99,7 +110,7 @@ pub fn decode_scan_endpoint_params(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "subdomain" => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),"userAgentTag" => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                "subdomain" => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),"target" => target = Some(d.str()?.to_string()),"timestamp" => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),"userAgentTag" => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                                         d.skip()?;
                                         Some(None)
                                     } else {
@@ -118,13 +129,30 @@ pub fn decode_scan_endpoint_params(
                         .to_string(),
                 ));
             },
+
+            target: if let Some(__x) = target {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanEndpointParams.target (#1)".to_string(),
+                ));
+            },
+
+            timestamp: if let Some(__x) = timestamp {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanEndpointParams.timestamp (#2)"
+                        .to_string(),
+                ));
+            },
             user_agent_tag: user_agent_tag.unwrap(),
 
             user_id: if let Some(__x) = user_id {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanEndpointParams.user_id (#2)".to_string(),
+                    "missing field ScanEndpointParams.user_id (#4)".to_string(),
                 ));
             },
         }
@@ -140,6 +168,13 @@ pub struct ScanEndpointResult {
     /// False if there was an issue scanning the endpoint
     #[serde(default)]
     pub success: bool,
+    #[serde(default)]
+    pub target: String,
+    #[serde(default)]
+    pub timestamp: Timestamp,
+    #[serde(rename = "userId")]
+    #[serde(default)]
+    pub user_id: String,
 }
 
 // Encode ScanEndpointResult as CBOR and append to output stream
@@ -152,7 +187,7 @@ pub fn encode_scan_endpoint_result<W: wasmbus_rpc::cbor::Write>(
 where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
-    e.map(3)?;
+    e.map(6)?;
     if let Some(val) = val.reason.as_ref() {
         e.str("reason")?;
         e.str(val)?;
@@ -167,6 +202,13 @@ where
     }
     e.str("success")?;
     e.bool(val.success)?;
+    e.str("target")?;
+    e.str(&val.target)?;
+    e.str("timestamp")?;
+    e.i64(val.timestamp.sec)?;
+    e.u32(val.timestamp.nsec)?;
+    e.str("userId")?;
+    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -180,6 +222,9 @@ pub fn decode_scan_endpoint_result(
         let mut subdomain: Option<Option<crate::common::Subdomain>> =
             Some(None);
         let mut success: Option<bool> = None;
+        let mut target: Option<String> = None;
+        let mut timestamp: Option<Timestamp> = None;
+        let mut user_id: Option<String> = None;
 
         let is_array =
             match d.datatype()? {
@@ -214,6 +259,14 @@ pub fn decode_scan_endpoint_result(
                         }
                     }
                     2 => success = Some(d.bool()?),
+                    3 => target = Some(d.str()?.to_string()),
+                    4 => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    5 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -241,6 +294,14 @@ pub fn decode_scan_endpoint_result(
                         }
                     }
                     "success" => success = Some(d.bool()?),
+                    "target" => target = Some(d.str()?.to_string()),
+                    "timestamp" => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -254,6 +315,31 @@ pub fn decode_scan_endpoint_result(
             } else {
                 return Err(RpcError::Deser(
                     "missing field ScanEndpointResult.success (#2)".to_string(),
+                ));
+            },
+
+            target: if let Some(__x) = target {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanEndpointResult.target (#3)".to_string(),
+                ));
+            },
+
+            timestamp: if let Some(__x) = timestamp {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanEndpointResult.timestamp (#4)"
+                        .to_string(),
+                ));
+            },
+
+            user_id: if let Some(__x) = user_id {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanEndpointResult.user_id (#5)".to_string(),
                 ));
             },
         }

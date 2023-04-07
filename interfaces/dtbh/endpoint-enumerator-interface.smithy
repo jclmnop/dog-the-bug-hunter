@@ -51,6 +51,8 @@ structure EnumerateEndpointsResponse {
   timestamp: Timestamp,
   @required
   userId: String,
+  @required
+  target: String,
   reason: String,
   subdomains: Subdomains,
 }

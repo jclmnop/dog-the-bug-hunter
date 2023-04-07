@@ -45,6 +45,8 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
                     subdomain: subdomain.clone(),
                     user_agent_tag: None,
                     user_id: req.user_id.clone(),
+                    timestamp: req.timestamp.clone(),
+                    target: req.target.clone(),
                 };
                 match serde_json::to_vec(&params) {
                     Ok(body) => {

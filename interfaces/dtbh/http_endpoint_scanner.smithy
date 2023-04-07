@@ -35,6 +35,10 @@ structure ScanEndpointParams {
   /// User ID is passed from the API, currently only used for logging purposes
   @required
   userId: String,
+  @required
+  timestamp: Timestamp,
+  @required
+  target: String
   /// Optional string to be appended to user agent string, usually so the target
   /// is aware of the purpose of requests (an example would be <username>@wearehackerone)
   userAgentTag: String,
@@ -46,4 +50,10 @@ structure ScanEndpointResult {
   success: Boolean,
   reason: String,
   subdomain: Subdomain,
+  @required
+  userId: String,
+  @required
+  timestamp: Timestamp,
+  @required
+  target: String,
 }

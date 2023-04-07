@@ -1,0 +1,11 @@
+name = "dotenv-disclosure"
+language = "rust"
+type = "actor"
+version = "0.1.0"
+
+[actor]
+claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging"]
+call-alias = "dtbh/scanner/dotenv-disclosure"
+
+[rust]
+target_path = "../../target"

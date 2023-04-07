@@ -1,12 +1,12 @@
 [package]
-name = "scanner-template"
+name = "dotenv-disclosure"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "scanner_template"
+name = "dotenv_disclosure"
 
 [dependencies]
 anyhow.workspace = true

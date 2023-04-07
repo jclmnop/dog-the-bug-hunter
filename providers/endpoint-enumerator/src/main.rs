@@ -172,6 +172,7 @@ impl EndpointEnumeratorProvider {
                     reason: Some(e.to_string()),
                     subdomains: None,
                     success: false,
+                    target: req.target.clone(),
                     timestamp,
                     user_id,
                 };
@@ -187,6 +188,7 @@ impl EndpointEnumeratorProvider {
                         reason: Some(e.to_string()),
                         subdomains: None,
                         success: false,
+                        target: req.target.clone(),
                         timestamp,
                         user_id,
                     };
@@ -201,6 +203,7 @@ impl EndpointEnumeratorProvider {
             success: true,
             timestamp,
             user_id,
+            target: req.target.clone()
         }
     }
 

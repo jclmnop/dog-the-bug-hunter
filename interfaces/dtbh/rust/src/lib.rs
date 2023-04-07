@@ -22,7 +22,7 @@ pub mod scanner_prelude {
         HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams,
         ScanEndpointResult,
     };
-    use crate::{PUB_RESULTS_TOPIC, TASKS_TOPIC};
+    use crate::{PUB_RESULTS_TOPIC, Report, TASKS_TOPIC};
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, StreamExt};
@@ -65,6 +65,7 @@ pub mod scanner_prelude {
         ) -> RpcResult<()> {
             let params: ScanEndpointParams = serde_json::from_slice(&msg.body)
                 .map_err(|e| RpcError::Deser(e.to_string()))?;
+            let (target, user_id, timestamp) = (params.target.clone(), params.user_id.clone(), params.timestamp.clone());
             let result = match self.scan_all(ctx, params).await {
                 Ok(result) => result,
                 Err(e) => ScanEndpointResult {
@@ -75,6 +76,9 @@ pub mod scanner_prelude {
                         e.to_string()
                     )),
                     success: false,
+                    target,
+                    timestamp,
+                    user_id,
                 },
             };
             match self.publish_result(ctx, result).await {
@@ -93,12 +97,20 @@ pub mod scanner_prelude {
             result: ScanEndpointResult,
         ) -> Result<()> {
             let topic = Self::pub_topic();
-            let msg = PubMessage {
-                subject: topic.to_string(),
-                body: serde_json::to_vec(&result)?,
-                reply_to: None,
-            };
-            MessagingSender::new().publish(ctx, &msg).await?;
+            if result.success {
+                let report = Report {
+                    subdomains: if let Some(subdomain) = result.subdomain {vec![subdomain]} else {vec![]},
+                    target: result.target,
+                    timestamp: result.timestamp,
+                    user_id: result.user_id,
+                };
+                let msg = PubMessage {
+                    subject: topic.to_string(),
+                    body: serde_json::to_vec(&report)?,
+                    reply_to: None,
+                };
+                MessagingSender::new().publish(ctx, &msg).await?;
+            }
             Ok(())
         }
 
@@ -108,6 +120,7 @@ pub mod scanner_prelude {
             ctx: &Context,
             mut params: ScanEndpointParams,
         ) -> Result<ScanEndpointResult> {
+            // let user_agent_tag = params.user_agent_tag.unwrap_or("".to_string());
             let url = params.subdomain.subdomain.to_owned();
             params.subdomain.open_ports = stream::iter(
                 params
@@ -119,7 +132,7 @@ pub mod scanner_prelude {
             .map(|mut p| {
                 let url = format!("http://{url}:{}", p.port);
                 async {
-                    if let Ok(Some(finding)) = self.scan(ctx, url).await {
+                    if let Ok(Some(finding)) = self.scan(ctx, url, &params.user_agent_tag).await {
                         p.findings.push(finding);
                     } //TODO: log error?
                     p
@@ -140,6 +153,9 @@ pub mod scanner_prelude {
                 reason: None,
                 subdomain: Some(params.subdomain),
                 success: true,
+                target: params.target,
+                timestamp: params.timestamp,
+                user_id: params.user_id,
             })
         }
 
@@ -147,6 +163,7 @@ pub mod scanner_prelude {
             &self,
             ctx: &Context,
             target_endpoint: String,
+            user_agent_tag: &Option<String>,
         ) -> RpcResult<Option<Finding>>;
     }
 }

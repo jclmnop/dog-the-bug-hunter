@@ -85,8 +85,7 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
         failures
             .into_iter()
             .for_each(|f| error_string.extend(format!("\n\t{f}").chars()));
-        let mut response = HttpResponse::internal_server_error(error_string);
-        Ok(response)
+        Ok(HttpResponse::internal_server_error(error_string))
     }
 }
 
@@ -149,18 +148,24 @@ impl From<HttpRequest> for RequestType {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::*;
-    use webassembly_test::webassembly_test;
+    use std::collections::HashMap;
     use wasmbus_rpc::Timestamp;
+    use webassembly_test::webassembly_test;
 
     #[webassembly_test]
     fn test_parse_req_type_scan() {
         let valid_scan_req = ScanRequest {
-            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"].into_iter().map(|s| s.to_string()).collect(),
+            targets: vec![
+                "www.google.com",
+                "www.github.com",
+                "www.cosmonic.com",
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
             user_id: "test".to_string(),
             user_agent_tag: None,
         };
@@ -208,7 +213,14 @@ mod tests {
     #[webassembly_test]
     fn test_parse_req_type_invalid() {
         let valid_scan_req = ScanRequest {
-            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"].into_iter().map(|s| s.to_string()).collect(),
+            targets: vec![
+                "www.google.com",
+                "www.github.com",
+                "www.cosmonic.com",
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
             user_id: "test".to_string(),
             user_agent_tag: None,
         };

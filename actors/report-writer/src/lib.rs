@@ -1,25 +1,36 @@
-use dtbh_interface::scanner_prelude::*;
-use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_messaging::{MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver};
-use wasmcloud_interface_sqldb::{SqlDbSender, SqlDbError, Statement, ExecuteResult, QueryResult};
-use dtbh_interface::{GetReportsRequest, GetReportsResult};
 use dtbh_interface::report_writer_prelude::*;
-use sqlx_core::query_builder::QueryBuilder;
+use dtbh_interface::scanner_prelude::*;
+use dtbh_interface::{GetReportsRequest, GetReportsResult};
+use wasmbus_rpc::actor::prelude::*;
+use wasmcloud_interface_messaging::{
+    MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
+};
+use wasmcloud_interface_sqldb::{
+    ExecuteResult, QueryResult, SqlDbError, SqlDbSender, Statement,
+};
 
 const CALL_ALIAS: &str = "dtbh/report-writer";
 const PUB_TOPIC: &str = "dtbh.reports.out";
 
 #[derive(Debug, Default, Actor, HealthResponder)]
-#[services(Actor, MessageSubscriber, Messaging, ReportWriter)]
+#[services(Actor, MessageSubscriber, ReportWriter)]
 struct ReportActor {}
 
 #[async_trait]
 impl ReportWriter for ReportActor {
-    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult> {
+    async fn write_report(
+        &self,
+        ctx: &Context,
+        arg: &Report,
+    ) -> RpcResult<WriteReportResult> {
         todo!()
     }
 
-    async fn get_reports(&self, ctx: &Context, arg: &GetReportsRequest) -> RpcResult<GetReportsResult> {
+    async fn get_reports(
+        &self,
+        ctx: &Context,
+        arg: &GetReportsRequest,
+    ) -> RpcResult<GetReportsResult> {
         todo!()
     }
 }
@@ -27,13 +38,17 @@ impl ReportWriter for ReportActor {
 #[async_trait]
 impl MessageSubscriber for ReportActor {
     /// Topic: `dtbh.reports.in`
-    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
-        let report: Report = serde_json::from_slice(&msg.body)?;
-        let report_json = serde_json::to_string_pretty(&report)?;
+    async fn handle_message(
+        &self,
+        ctx: &Context,
+        msg: &SubMessage,
+    ) -> RpcResult<()> {
+        let report: Report = serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
+        let report_json = serde_json::to_string_pretty(&report).map_err(|e| RpcError::Ser(e.to_string()))?;
         let pub_msg = PubMessage {
             subject: PUB_TOPIC.to_string(),
             reply_to: None,
-            body: serde_json::to_vec(&report_json)?,
+            body: serde_json::to_vec(&report_json).map_err(|e| RpcError::Ser(e.to_string()))?,
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
         publisher.publish(ctx, &pub_msg).await
@@ -42,7 +57,10 @@ impl MessageSubscriber for ReportActor {
     }
 }
 
-async fn write_report_to_db(ctx: &Context, report: &Report) -> Result<WriteReportResult> {
+async fn write_report_to_db(
+    ctx: &Context,
+    report: &Report,
+) -> Result<WriteReportResult> {
     todo!()
 }
 
