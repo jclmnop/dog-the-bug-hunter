@@ -1,6 +1,6 @@
-use std::time::Duration;
-use once_cell::sync::Lazy;
 use dtbh_interface::scanner_prelude::*;
+use once_cell::sync::Lazy;
+use std::time::Duration;
 
 #[allow(dead_code)]
 const CALL_ALIAS: &str = "dtb/scanner/dotenv-disclosure";
@@ -21,18 +21,24 @@ impl ScannerModule for DotEnvActor {
         "dotenv-disclosure"
     }
 
-    async fn scan(&self, ctx: &Context, target_endpoint: String, user_agent_tag: &Option<String>) -> RpcResult<Option<Finding>> {
+    async fn scan(
+        &self,
+        ctx: &Context,
+        target_endpoint: String,
+        user_agent_tag: &Option<String>,
+    ) -> RpcResult<Option<Finding>> {
         let url = format!("{target_endpoint}/.env");
         let mut req = HttpRequest::get(&url);
         if let Some(tag) = user_agent_tag {
-            req.headers.insert("User-Agent".to_string(), vec![tag.to_owned()]);
+            req.headers
+                .insert("User-Agent".to_string(), vec![tag.to_owned()]);
         }
 
         let resp = HTTP_CLIENT.request(ctx, &req).await?;
         if resp.status_code >= 200 && resp.status_code <= 299 {
             let finding = Finding {
                 finding_type: Self::name().to_string(),
-                url
+                url,
             };
             info!("{finding:#?}");
             Ok(Some(finding))

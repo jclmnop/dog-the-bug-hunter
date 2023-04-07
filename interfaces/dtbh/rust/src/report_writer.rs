@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -82,53 +82,84 @@ pub fn decode_get_reports_request(
         let mut target: Option<crate::api::Targets> = None;
         let mut user_id: Option<String> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct GetReportsRequest, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct GetReportsRequest, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
-                                    },
-                   1 => start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
-                                    },
-                   2 => target = Some(crate::api::decode_targets(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e))?),3 => user_id = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
+                    0 => {
+                        end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(wasmbus_rpc::Timestamp {
+                                sec: d.i64()?,
+                                nsec: d.u32()?,
+                            }))
+                        }
                     }
+                    1 => {
+                        start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(wasmbus_rpc::Timestamp {
+                                sec: d.i64()?,
+                                nsec: d.u32()?,
+                            }))
+                        }
+                    }
+                    2 => {
+                        target = Some(crate::api::decode_targets(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
+                        })?)
+                    }
+                    3 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "endTimestamp" => end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
-                                    },
-                   "startTimestamp" => start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? } ))
-                                    },
-                   "target" => target = Some(crate::api::decode_targets(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e))?),"userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
+                    "endTimestamp" => {
+                        end_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(wasmbus_rpc::Timestamp {
+                                sec: d.i64()?,
+                                nsec: d.u32()?,
+                            }))
+                        }
                     }
+                    "startTimestamp" => {
+                        start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(wasmbus_rpc::Timestamp {
+                                sec: d.i64()?,
+                                nsec: d.u32()?,
+                            }))
+                        }
+                    }
+                    "target" => {
+                        target = Some(crate::api::decode_targets(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
+                        })?)
+                    }
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         }
         GetReportsRequest {
@@ -202,36 +233,38 @@ pub fn decode_get_reports_result(
         let mut reports: Option<Option<Reports>> = Some(None);
         let mut success: Option<bool> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct GetReportsResult, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct GetReportsResult, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
                     0 => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    1 => {
-                        reports = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( decode_reports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    1 => {
+                        reports = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(decode_reports(d).map_err(|e| {
+                                format!(
+                                    "decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}",
+                                    e
+                                )
+                            })?))
                         }
                     }
                     2 => success = Some(d.bool()?),
@@ -243,22 +276,24 @@ pub fn decode_get_reports_result(
             for __i in 0..(len as usize) {
                 match d.str()? {
                     "reason" => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    "reports" => {
-                        reports = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( decode_reports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    "reports" => {
+                        reports = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(decode_reports(d).map_err(|e| {
+                                format!(
+                                    "decoding 'jclmnop.dtbh.interface.report_writer#Reports': {}",
+                                    e
+                                )
+                            })?))
                         }
                     }
                     "success" => success = Some(d.bool()?),
@@ -321,9 +356,7 @@ where
 
 // Decode Report from cbor input stream
 #[doc(hidden)]
-pub fn decode_report(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Report, RpcError> {
+pub fn decode_report(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Report, RpcError> {
     let __result = {
         let mut subdomains: Option<crate::common::Subdomains> = None;
         let mut target: Option<String> = None;
@@ -343,16 +376,41 @@ pub fn decode_report(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => subdomains = Some(crate::common::decode_subdomains(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e))?),1 => target = Some(d.str()?.to_string()),2 => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),3 => user_id = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
+                    0 => {
+                        subdomains = Some(crate::common::decode_subdomains(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e)
+                        })?)
                     }
+                    1 => target = Some(d.str()?.to_string()),
+                    2 => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    3 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "subdomains" => subdomains = Some(crate::common::decode_subdomains(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e))?),"target" => target = Some(d.str()?.to_string()),"timestamp" => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),"userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
+                    "subdomains" => {
+                        subdomains = Some(crate::common::decode_subdomains(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e)
+                        })?)
                     }
+                    "target" => target = Some(d.str()?.to_string()),
+                    "timestamp" => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         }
         Report {
@@ -412,14 +470,17 @@ where
 
 // Decode Reports from cbor input stream
 #[doc(hidden)]
-pub fn decode_reports(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Reports, RpcError> {
+pub fn decode_reports(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Reports, RpcError> {
     let __result = {
         if let Some(n) = d.array()? {
             let mut arr: Vec<Report> = Vec::with_capacity(n as usize);
             for _ in 0..(n as usize) {
-                arr.push(decode_report(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Report': {}", e))?)
+                arr.push(decode_report(d).map_err(|e| {
+                    format!(
+                        "decoding 'jclmnop.dtbh.interface.report_writer#Report': {}",
+                        e
+                    )
+                })?)
             }
             arr
         } else {
@@ -427,10 +488,15 @@ pub fn decode_reports(
             let mut arr: Vec<Report> = Vec::new();
             loop {
                 match d.datatype() {
-                                Err(_) => break,
-                                Ok(wasmbus_rpc::cbor::Type::Break) => break,
-                                Ok(_) => arr.push(decode_report(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.report_writer#Report': {}", e))?)
-                            }
+                    Err(_) => break,
+                    Ok(wasmbus_rpc::cbor::Type::Break) => break,
+                    Ok(_) => arr.push(decode_report(d).map_err(|e| {
+                        format!(
+                            "decoding 'jclmnop.dtbh.interface.report_writer#Report': {}",
+                            e
+                        )
+                    })?),
+                }
             }
             arr
         }
@@ -476,27 +542,26 @@ pub fn decode_write_report_result(
         let mut message: Option<Option<String>> = Some(None);
         let mut success: Option<bool> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct WriteReportResult, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct WriteReportResult, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
                     0 => {
-                        message =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
+                        message = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
                     }
                     1 => success = Some(d.bool()?),
                     _ => d.skip()?,
@@ -507,13 +572,12 @@ pub fn decode_write_report_result(
             for __i in 0..(len as usize) {
                 match d.str()? {
                     "message" => {
-                        message =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
+                        message = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
                     }
                     "success" => success = Some(d.bool()?),
                     _ => d.skip()?,
@@ -544,11 +608,7 @@ pub trait ReportWriter {
         "dtbh:reportwriter"
     }
     /// Write a generated report to keyvalue storage
-    async fn write_report(
-        &self,
-        ctx: &Context,
-        arg: &Report,
-    ) -> RpcResult<WriteReportResult>;
+    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult>;
     async fn get_reports(
         &self,
         ctx: &Context,
@@ -561,34 +621,20 @@ pub trait ReportWriter {
 #[doc(hidden)]
 #[async_trait]
 pub trait ReportWriterReceiver: MessageDispatch + ReportWriter {
-    async fn dispatch(
-        &self,
-        ctx: &Context,
-        message: Message<'_>,
-    ) -> Result<Vec<u8>, RpcError> {
+    async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "WriteReport" => {
-                let value: Report = wasmbus_rpc::common::deserialize(
-                    &message.arg,
-                )
-                .map_err(|e| RpcError::Deser(format!("'Report': {}", e)))?;
+                let value: Report = wasmbus_rpc::common::deserialize(&message.arg)
+                    .map_err(|e| RpcError::Deser(format!("'Report': {}", e)))?;
 
-                let resp =
-                    ReportWriter::write_report(self, ctx, &value).await?;
+                let resp = ReportWriter::write_report(self, ctx, &value).await?;
                 let buf = wasmbus_rpc::common::serialize(&resp)?;
 
                 Ok(buf)
             }
             "GetReports" => {
-                let value: GetReportsRequest =
-                    wasmbus_rpc::common::deserialize(&message.arg).map_err(
-                        |e| {
-                            RpcError::Deser(format!(
-                                "'GetReportsRequest': {}",
-                                e
-                            ))
-                        },
-                    )?;
+                let value: GetReportsRequest = wasmbus_rpc::common::deserialize(&message.arg)
+                    .map_err(|e| RpcError::Deser(format!("'GetReportsRequest': {}", e)))?;
 
                 let resp = ReportWriter::get_reports(self, ctx, &value).await?;
                 let buf = wasmbus_rpc::common::serialize(&resp)?;
@@ -623,9 +669,7 @@ impl<T: Transport> ReportWriterSender<T> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'send>
-    ReportWriterSender<wasmbus_rpc::provider::ProviderTransport<'send>>
-{
+impl<'send> ReportWriterSender<wasmbus_rpc::provider::ProviderTransport<'send>> {
     /// Constructs a Sender using an actor's LinkDefinition,
     /// Uses the provider's HostBridge for rpc
     pub fn for_actor(ld: &'send wasmbus_rpc::core::LinkDefinition) -> Self {
@@ -639,24 +683,16 @@ impl ReportWriterSender<wasmbus_rpc::actor::prelude::WasmHost> {
     /// Constructs a client for actor-to-actor messaging
     /// using the recipient actor's public key
     pub fn to_actor(actor_id: &str) -> Self {
-        let transport = wasmbus_rpc::actor::prelude::WasmHost::to_actor(
-            actor_id.to_string(),
-        )
-        .unwrap();
+        let transport =
+            wasmbus_rpc::actor::prelude::WasmHost::to_actor(actor_id.to_string()).unwrap();
         Self { transport }
     }
 }
 #[async_trait]
-impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter
-    for ReportWriterSender<T>
-{
+impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter for ReportWriterSender<T> {
     #[allow(unused)]
     /// Write a generated report to keyvalue storage
-    async fn write_report(
-        &self,
-        ctx: &Context,
-        arg: &Report,
-    ) -> RpcResult<WriteReportResult> {
+    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self
@@ -672,9 +708,7 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter
             .await?;
 
         let value: WriteReportResult = wasmbus_rpc::common::deserialize(&resp)
-            .map_err(|e| {
-                RpcError::Deser(format!("'{}': WriteReportResult", e))
-            })?;
+            .map_err(|e| RpcError::Deser(format!("'{}': WriteReportResult", e)))?;
         Ok(value)
     }
     #[allow(unused)]
@@ -698,9 +732,7 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter
             .await?;
 
         let value: GetReportsResult = wasmbus_rpc::common::deserialize(&resp)
-            .map_err(|e| {
-            RpcError::Deser(format!("'{}': GetReportsResult", e))
-        })?;
+            .map_err(|e| RpcError::Deser(format!("'{}': GetReportsResult", e)))?;
         Ok(value)
     }
 }

@@ -5,10 +5,18 @@ members = [
   "./actors/report-writer",
   "./actors/api-gateway",
   "./interfaces/*/rust",
+  "./providers/endpoint-enumerator",
 ]
 exclude = [
   "./providers/sleepy",
-  "./providers/endpoint-enumerator",
+#  "./providers/endpoint-enumerator",
+]
+default-members = [
+  "./actors/scanner-modules/*",
+  "./actors/orchestrator",
+  "./actors/report-writer",
+  "./actors/api-gateway",
+#  "./providers/endpoint-enumerator",
 ]
 
 [workspace.package]

@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -51,9 +51,7 @@ where
 
 // Decode Finding from cbor input stream
 #[doc(hidden)]
-pub fn decode_finding(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Finding, RpcError> {
+pub fn decode_finding(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Finding, RpcError> {
     let __result = {
         let mut finding_type: Option<String> = None;
         let mut url: Option<String> = None;
@@ -63,8 +61,7 @@ pub fn decode_finding(
             wasmbus_rpc::cbor::Type::Map => false,
             _ => {
                 return Err(RpcError::Deser(
-                    "decoding struct Finding, expected array or map"
-                        .to_string(),
+                    "decoding struct Finding, expected array or map".to_string(),
                 ))
             }
         };
@@ -128,18 +125,13 @@ where
 
 // Decode Findings from cbor input stream
 #[doc(hidden)]
-pub fn decode_findings(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Findings, RpcError> {
+pub fn decode_findings(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Findings, RpcError> {
     let __result = {
         if let Some(n) = d.array()? {
             let mut arr: Vec<Finding> = Vec::with_capacity(n as usize);
             for _ in 0..(n as usize) {
                 arr.push(decode_finding(d).map_err(|e| {
-                    format!(
-                        "decoding 'jclmnop.dtbh.interface.common#Finding': {}",
-                        e
-                    )
+                    format!("decoding 'jclmnop.dtbh.interface.common#Finding': {}", e)
                 })?)
             }
             arr
@@ -148,10 +140,12 @@ pub fn decode_findings(
             let mut arr: Vec<Finding> = Vec::new();
             loop {
                 match d.datatype() {
-                                Err(_) => break,
-                                Ok(wasmbus_rpc::cbor::Type::Break) => break,
-                                Ok(_) => arr.push(decode_finding(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Finding': {}", e))?)
-                            }
+                    Err(_) => break,
+                    Ok(wasmbus_rpc::cbor::Type::Break) => break,
+                    Ok(_) => arr.push(decode_finding(d).map_err(|e| {
+                        format!("decoding 'jclmnop.dtbh.interface.common#Finding': {}", e)
+                    })?),
+                }
             }
             arr
         }
@@ -190,9 +184,7 @@ where
 
 // Decode Port from cbor input stream
 #[doc(hidden)]
-pub fn decode_port(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Port, RpcError> {
+pub fn decode_port(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Port, RpcError> {
     let __result = {
         let mut findings: Option<Findings> = None;
         let mut is_open: Option<bool> = None;
@@ -211,16 +203,29 @@ pub fn decode_port(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => findings = Some(decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))?),1 => is_open = Some(d.bool()?),2 => port = Some(d.u16()?),
-                    _ => d.skip()?,
+                    0 => {
+                        findings = Some(decode_findings(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e)
+                        })?)
                     }
+                    1 => is_open = Some(d.bool()?),
+                    2 => port = Some(d.u16()?),
+                    _ => d.skip()?,
+                }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "findings" => findings = Some(decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))?),"isOpen" => is_open = Some(d.bool()?),"port" => port = Some(d.u16()?),         _ => d.skip()?,
+                    "findings" => {
+                        findings = Some(decode_findings(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e)
+                        })?)
                     }
+                    "isOpen" => is_open = Some(d.bool()?),
+                    "port" => port = Some(d.u16()?),
+                    _ => d.skip()?,
+                }
             }
         }
         Port {
@@ -243,9 +248,7 @@ pub fn decode_port(
             port: if let Some(__x) = port {
                 __x
             } else {
-                return Err(RpcError::Deser(
-                    "missing field Port.port (#2)".to_string(),
-                ));
+                return Err(RpcError::Deser("missing field Port.port (#2)".to_string()));
             },
         }
     };
@@ -272,39 +275,32 @@ where
 
 // Decode Ports from cbor input stream
 #[doc(hidden)]
-pub fn decode_ports(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Ports, RpcError> {
-    let __result = {
-        if let Some(n) = d.array()? {
-            let mut arr: Vec<Port> = Vec::with_capacity(n as usize);
-            for _ in 0..(n as usize) {
-                arr.push(decode_port(d).map_err(|e| {
-                    format!(
-                        "decoding 'jclmnop.dtbh.interface.common#Port': {}",
-                        e
-                    )
-                })?)
-            }
-            arr
-        } else {
-            // indefinite array
-            let mut arr: Vec<Port> = Vec::new();
-            loop {
-                match d.datatype() {
-                    Err(_) => break,
-                    Ok(wasmbus_rpc::cbor::Type::Break) => break,
-                    Ok(_) => arr.push(decode_port(d).map_err(|e| {
-                        format!(
-                            "decoding 'jclmnop.dtbh.interface.common#Port': {}",
-                            e
-                        )
-                    })?),
+pub fn decode_ports(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Ports, RpcError> {
+    let __result =
+        {
+            if let Some(n) = d.array()? {
+                let mut arr: Vec<Port> = Vec::with_capacity(n as usize);
+                for _ in 0..(n as usize) {
+                    arr.push(decode_port(d).map_err(|e| {
+                        format!("decoding 'jclmnop.dtbh.interface.common#Port': {}", e)
+                    })?)
                 }
+                arr
+            } else {
+                // indefinite array
+                let mut arr: Vec<Port> = Vec::new();
+                loop {
+                    match d.datatype() {
+                        Err(_) => break,
+                        Ok(wasmbus_rpc::cbor::Type::Break) => break,
+                        Ok(_) => arr.push(decode_port(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Port': {}", e)
+                        })?),
+                    }
+                }
+                arr
             }
-            arr
-        }
-    };
+        };
     Ok(__result)
 }
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -335,9 +331,7 @@ where
 
 // Decode Subdomain from cbor input stream
 #[doc(hidden)]
-pub fn decode_subdomain(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Subdomain, RpcError> {
+pub fn decode_subdomain(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Subdomain, RpcError> {
     let __result = {
         let mut open_ports: Option<Ports> = None;
         let mut subdomain: Option<String> = None;
@@ -347,8 +341,7 @@ pub fn decode_subdomain(
             wasmbus_rpc::cbor::Type::Map => false,
             _ => {
                 return Err(RpcError::Deser(
-                    "decoding struct Subdomain, expected array or map"
-                        .to_string(),
+                    "decoding struct Subdomain, expected array or map".to_string(),
                 ))
             }
         };
@@ -356,16 +349,27 @@ pub fn decode_subdomain(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => open_ports = Some(decode_ports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Ports': {}", e))?),1 => subdomain = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
+                    0 => {
+                        open_ports = Some(decode_ports(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Ports': {}", e)
+                        })?)
                     }
+                    1 => subdomain = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "openPorts" => open_ports = Some(decode_ports(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Ports': {}", e))?),"subdomain" => subdomain = Some(d.str()?.to_string()),         _ => d.skip()?,
+                    "openPorts" => {
+                        open_ports = Some(decode_ports(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Ports': {}", e)
+                        })?)
                     }
+                    "subdomain" => subdomain = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         }
         Subdomain {
@@ -409,14 +413,14 @@ where
 
 // Decode Subdomains from cbor input stream
 #[doc(hidden)]
-pub fn decode_subdomains(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Subdomains, RpcError> {
+pub fn decode_subdomains(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Subdomains, RpcError> {
     let __result = {
         if let Some(n) = d.array()? {
             let mut arr: Vec<Subdomain> = Vec::with_capacity(n as usize);
             for _ in 0..(n as usize) {
-                arr.push(decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?)
+                arr.push(decode_subdomain(d).map_err(|e| {
+                    format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                })?)
             }
             arr
         } else {
@@ -424,10 +428,12 @@ pub fn decode_subdomains(
             let mut arr: Vec<Subdomain> = Vec::new();
             loop {
                 match d.datatype() {
-                                Err(_) => break,
-                                Ok(wasmbus_rpc::cbor::Type::Break) => break,
-                                Ok(_) => arr.push(decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?)
-                            }
+                    Err(_) => break,
+                    Ok(wasmbus_rpc::cbor::Type::Break) => break,
+                    Ok(_) => arr.push(decode_subdomain(d).map_err(|e| {
+                        format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                    })?),
+                }
             }
             arr
         }

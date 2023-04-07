@@ -1,9 +1,10 @@
 use dtbh_interface::scanner_prelude::*;
-use wasmbus_rpc::actor::prelude::*;
 use once_cell::sync::Lazy;
+use wasmbus_rpc::actor::prelude::*;
 
 const CALL_ALIAS: &str = "dtb/scanner/<template>";
-static HTTP_CLIENT: Lazy<HttpClientSender<WasmHost>> = Lazy::new(|| HttpClientSender::new());
+static HTTP_CLIENT: Lazy<HttpClientSender<WasmHost>> =
+    Lazy::new(|| HttpClientSender::new());
 
 #[derive(Debug, Default, Actor, HealthResponder)]
 #[services(Actor, MessageSubscriber)]
@@ -15,7 +16,12 @@ impl ScannerModule for TemplateActor {
         "template"
     }
 
-    async fn scan(&self, ctx: &Context, target_endpoint: String, user_agent_tag: &Option<String>) -> RpcResult<Option<Finding>> {
+    async fn scan(
+        &self,
+        ctx: &Context,
+        target_endpoint: String,
+        user_agent_tag: &Option<String>,
+    ) -> RpcResult<Option<Finding>> {
         todo!()
     }
 }

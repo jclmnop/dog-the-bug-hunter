@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -59,15 +59,15 @@ pub fn decode_run_scans_request(
         let mut target: Option<String> = None;
         let mut user_id: Option<String> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct RunScansRequest, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct RunScansRequest, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
@@ -117,11 +117,7 @@ pub trait Orchestrator {
         "dtbh:orchestrator"
     }
     /// Run scans for a given target
-    async fn run_scans(
-        &self,
-        ctx: &Context,
-        arg: &RunScansRequest,
-    ) -> RpcResult<bool>;
+    async fn run_scans(&self, ctx: &Context, arg: &RunScansRequest) -> RpcResult<bool>;
 }
 
 /// OrchestratorReceiver receives messages defined in the Orchestrator service trait
@@ -129,19 +125,11 @@ pub trait Orchestrator {
 #[doc(hidden)]
 #[async_trait]
 pub trait OrchestratorReceiver: MessageDispatch + Orchestrator {
-    async fn dispatch(
-        &self,
-        ctx: &Context,
-        message: Message<'_>,
-    ) -> Result<Vec<u8>, RpcError> {
+    async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "RunScans" => {
-                let value: RunScansRequest = wasmbus_rpc::common::deserialize(
-                    &message.arg,
-                )
-                .map_err(|e| {
-                    RpcError::Deser(format!("'RunScansRequest': {}", e))
-                })?;
+                let value: RunScansRequest = wasmbus_rpc::common::deserialize(&message.arg)
+                    .map_err(|e| RpcError::Deser(format!("'RunScansRequest': {}", e)))?;
 
                 let resp = Orchestrator::run_scans(self, ctx, &value).await?;
                 let buf = wasmbus_rpc::common::serialize(&resp)?;
@@ -176,9 +164,7 @@ impl<T: Transport> OrchestratorSender<T> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'send>
-    OrchestratorSender<wasmbus_rpc::provider::ProviderTransport<'send>>
-{
+impl<'send> OrchestratorSender<wasmbus_rpc::provider::ProviderTransport<'send>> {
     /// Constructs a Sender using an actor's LinkDefinition,
     /// Uses the provider's HostBridge for rpc
     pub fn for_actor(ld: &'send wasmbus_rpc::core::LinkDefinition) -> Self {
@@ -192,24 +178,16 @@ impl OrchestratorSender<wasmbus_rpc::actor::prelude::WasmHost> {
     /// Constructs a client for actor-to-actor messaging
     /// using the recipient actor's public key
     pub fn to_actor(actor_id: &str) -> Self {
-        let transport = wasmbus_rpc::actor::prelude::WasmHost::to_actor(
-            actor_id.to_string(),
-        )
-        .unwrap();
+        let transport =
+            wasmbus_rpc::actor::prelude::WasmHost::to_actor(actor_id.to_string()).unwrap();
         Self { transport }
     }
 }
 #[async_trait]
-impl<T: Transport + std::marker::Sync + std::marker::Send> Orchestrator
-    for OrchestratorSender<T>
-{
+impl<T: Transport + std::marker::Sync + std::marker::Send> Orchestrator for OrchestratorSender<T> {
     #[allow(unused)]
     /// Run scans for a given target
-    async fn run_scans(
-        &self,
-        ctx: &Context,
-        arg: &RunScansRequest,
-    ) -> RpcResult<bool> {
+    async fn run_scans(&self, ctx: &Context, arg: &RunScansRequest) -> RpcResult<bool> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self

@@ -53,13 +53,13 @@ pub async fn scan_port(mut socket_address: SocketAddr, port: u16) -> Port {
         timeout(timeout_limit, TcpStream::connect(&socket_address)).await
     {
         Port {
-            findings: None,
+            findings: vec![],
             is_open: true,
             port,
         }
     } else {
         Port {
-            findings: None,
+            findings: vec![],
             is_open: false,
             port,
         }

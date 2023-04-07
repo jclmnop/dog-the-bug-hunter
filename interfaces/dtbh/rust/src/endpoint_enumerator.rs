@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -83,39 +83,44 @@ pub fn decode_enumerate_endpoints_response(
 ) -> Result<EnumerateEndpointsResponse, RpcError> {
     let __result = {
         let mut reason: Option<Option<String>> = Some(None);
-        let mut subdomains: Option<Option<crate::common::Subdomains>> =
-            Some(None);
+        let mut subdomains: Option<Option<crate::common::Subdomains>> = Some(None);
         let mut success: Option<bool> = None;
         let mut target: Option<String> = None;
         let mut timestamp: Option<Timestamp> = None;
         let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser("decoding struct EnumerateEndpointsResponse, expected array or map".to_string()))
-            };
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct EnumerateEndpointsResponse, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
                     0 => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    1 => {
-                        subdomains = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( crate::common::decode_subdomains(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    1 => {
+                        subdomains = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(crate::common::decode_subdomains(d).map_err(|e| {
+                                format!(
+                                    "decoding 'jclmnop.dtbh.interface.common#Subdomains': {}",
+                                    e
+                                )
+                            })?))
                         }
                     }
                     2 => success = Some(d.bool()?),
@@ -135,22 +140,24 @@ pub fn decode_enumerate_endpoints_response(
             for __i in 0..(len as usize) {
                 match d.str()? {
                     "reason" => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    "subdomains" => {
-                        subdomains = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( crate::common::decode_subdomains(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomains': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    "subdomains" => {
+                        subdomains = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(crate::common::decode_subdomains(d).map_err(|e| {
+                                format!(
+                                    "decoding 'jclmnop.dtbh.interface.common#Subdomains': {}",
+                                    e
+                                )
+                            })?))
                         }
                     }
                     "success" => success = Some(d.bool()?),
@@ -174,8 +181,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.success (#2)"
-                        .to_string(),
+                    "missing field EnumerateEndpointsResponse.success (#2)".to_string(),
                 ));
             },
 
@@ -183,8 +189,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.target (#3)"
-                        .to_string(),
+                    "missing field EnumerateEndpointsResponse.target (#3)".to_string(),
                 ));
             },
 
@@ -192,8 +197,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.timestamp (#4)"
-                        .to_string(),
+                    "missing field EnumerateEndpointsResponse.timestamp (#4)".to_string(),
                 ));
             },
 
@@ -201,8 +205,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.user_id (#5)"
-                        .to_string(),
+                    "missing field EnumerateEndpointsResponse.user_id (#5)".to_string(),
                 ));
             },
         }
@@ -228,26 +231,15 @@ pub trait EndpointEnumerator {
 /// EndpointEnumeratorReceiver receives messages defined in the EndpointEnumerator service trait
 #[doc(hidden)]
 #[async_trait]
-pub trait EndpointEnumeratorReceiver:
-    MessageDispatch + EndpointEnumerator
-{
-    async fn dispatch(
-        &self,
-        ctx: &Context,
-        message: Message<'_>,
-    ) -> Result<Vec<u8>, RpcError> {
+pub trait EndpointEnumeratorReceiver: MessageDispatch + EndpointEnumerator {
+    async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "EnumerateEndpoints" => {
                 let value: crate::orchestrator::RunScansRequest =
-                    wasmbus_rpc::common::deserialize(&message.arg).map_err(
-                        |e| {
-                            RpcError::Deser(format!("'RunScansRequest': {}", e))
-                        },
-                    )?;
+                    wasmbus_rpc::common::deserialize(&message.arg)
+                        .map_err(|e| RpcError::Deser(format!("'RunScansRequest': {}", e)))?;
 
-                let _resp =
-                    EndpointEnumerator::enumerate_endpoints(self, ctx, &value)
-                        .await?;
+                let _resp = EndpointEnumerator::enumerate_endpoints(self, ctx, &value).await?;
                 let buf = Vec::new();
                 Ok(buf)
             }
@@ -292,9 +284,7 @@ impl EndpointEnumeratorSender<wasmbus_rpc::actor::prelude::WasmHost> {
 
     /// Constructs a client for sending to a EndpointEnumerator provider
     /// implementing the 'jclmnop:endpoint_enumerator' capability contract, with the specified link name
-    pub fn new_with_link(
-        link_name: &str,
-    ) -> wasmbus_rpc::error::RpcResult<Self> {
+    pub fn new_with_link(link_name: &str) -> wasmbus_rpc::error::RpcResult<Self> {
         let transport = wasmbus_rpc::actor::prelude::WasmHost::to_provider(
             "jclmnop:endpoint_enumerator",
             link_name,
@@ -352,24 +342,18 @@ pub trait EndpointEnumeratorCallbackReceiver {
 pub trait EndpointEnumeratorCallbackReceiverReceiver:
     MessageDispatch + EndpointEnumeratorCallbackReceiver
 {
-    async fn dispatch(
-        &self,
-        ctx: &Context,
-        message: Message<'_>,
-    ) -> Result<Vec<u8>, RpcError> {
+    async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "EnumerateEndpointsCallback" => {
                 let value: EnumerateEndpointsResponse =
-                    wasmbus_rpc::common::deserialize(&message.arg).map_err(
-                        |e| {
-                            RpcError::Deser(format!(
-                                "'EnumerateEndpointsResponse': {}",
-                                e
-                            ))
-                        },
-                    )?;
+                    wasmbus_rpc::common::deserialize(&message.arg).map_err(|e| {
+                        RpcError::Deser(format!("'EnumerateEndpointsResponse': {}", e))
+                    })?;
 
-                let _resp = EndpointEnumeratorCallbackReceiver::enumerate_endpoints_callback(self, ctx, &value).await?;
+                let _resp = EndpointEnumeratorCallbackReceiver::enumerate_endpoints_callback(
+                    self, ctx, &value,
+                )
+                .await?;
                 let buf = Vec::new();
                 Ok(buf)
             }
@@ -401,9 +385,7 @@ impl<T: Transport> EndpointEnumeratorCallbackReceiverSender<T> {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl<'send>
-    EndpointEnumeratorCallbackReceiverSender<
-        wasmbus_rpc::provider::ProviderTransport<'send>,
-    >
+    EndpointEnumeratorCallbackReceiverSender<wasmbus_rpc::provider::ProviderTransport<'send>>
 {
     /// Constructs a Sender using an actor's LinkDefinition,
     /// Uses the provider's HostBridge for rpc
@@ -414,24 +396,17 @@ impl<'send>
     }
 }
 #[cfg(target_arch = "wasm32")]
-impl
-    EndpointEnumeratorCallbackReceiverSender<
-        wasmbus_rpc::actor::prelude::WasmHost,
-    >
-{
+impl EndpointEnumeratorCallbackReceiverSender<wasmbus_rpc::actor::prelude::WasmHost> {
     /// Constructs a client for actor-to-actor messaging
     /// using the recipient actor's public key
     pub fn to_actor(actor_id: &str) -> Self {
-        let transport = wasmbus_rpc::actor::prelude::WasmHost::to_actor(
-            actor_id.to_string(),
-        )
-        .unwrap();
+        let transport =
+            wasmbus_rpc::actor::prelude::WasmHost::to_actor(actor_id.to_string()).unwrap();
         Self { transport }
     }
 }
 #[async_trait]
-impl<T: Transport + std::marker::Sync + std::marker::Send>
-    EndpointEnumeratorCallbackReceiver
+impl<T: Transport + std::marker::Sync + std::marker::Send> EndpointEnumeratorCallbackReceiver
     for EndpointEnumeratorCallbackReceiverSender<T>
 {
     #[allow(unused)]
@@ -443,7 +418,17 @@ impl<T: Transport + std::marker::Sync + std::marker::Send>
     ) -> RpcResult<()> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
-        let resp = self.transport.send(ctx, Message{ method: "EndpointEnumeratorCallbackReceiver.EnumerateEndpointsCallback", arg: Cow::Borrowed(&buf)}, None).await?;
+        let resp = self
+            .transport
+            .send(
+                ctx,
+                Message {
+                    method: "EndpointEnumeratorCallbackReceiver.EnumerateEndpointsCallback",
+                    arg: Cow::Borrowed(&buf),
+                },
+                None,
+            )
+            .await?;
         Ok(())
     }
 }

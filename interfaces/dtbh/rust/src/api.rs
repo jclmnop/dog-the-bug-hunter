@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -72,8 +72,7 @@ pub fn decode_scan_request(
             wasmbus_rpc::cbor::Type::Map => false,
             _ => {
                 return Err(RpcError::Deser(
-                    "decoding struct ScanRequest, expected array or map"
-                        .to_string(),
+                    "decoding struct ScanRequest, expected array or map".to_string(),
                 ))
             }
         };
@@ -81,20 +80,18 @@ pub fn decode_scan_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => targets = Some(decode_targets(d).map_err(|e| {
-                        format!(
-                            "decoding 'jclmnop.dtbh.interface.api#Targets': {}",
-                            e
-                        )
-                    })?),
+                    0 => {
+                        targets = Some(decode_targets(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
+                        })?)
+                    }
                     1 => {
-                        user_agent_tag =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
+                        user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
                     }
                     2 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
@@ -104,14 +101,22 @@ pub fn decode_scan_request(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "targets" => targets = Some(decode_targets(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e))?),"userAgentTag" => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( d.str()?.to_string() ))
-                                    },
-                   "userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
+                    "targets" => {
+                        targets = Some(decode_targets(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
+                        })?)
                     }
+                    "userAgentTag" => {
+                        user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         }
         ScanRequest {
@@ -156,9 +161,7 @@ where
 
 // Decode Targets from cbor input stream
 #[doc(hidden)]
-pub fn decode_targets(
-    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
-) -> Result<Targets, RpcError> {
+pub fn decode_targets(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Targets, RpcError> {
     let __result = {
         if let Some(n) = d.array()? {
             let mut arr: Vec<String> = Vec::with_capacity(n as usize);

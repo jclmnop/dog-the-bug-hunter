@@ -12,8 +12,8 @@ use std::{borrow::Borrow, borrow::Cow, io::Write, string::ToString};
 use wasmbus_rpc::{
     cbor::*,
     common::{
-        deserialize, message_format, serialize, Context, Message,
-        MessageDispatch, MessageFormat, SendOpts, Transport,
+        deserialize, message_format, serialize, Context, Message, MessageDispatch, MessageFormat,
+        SendOpts, Transport,
     },
     error::{RpcError, RpcResult},
     Timestamp,
@@ -83,41 +83,70 @@ pub fn decode_scan_endpoint_params(
         let mut user_agent_tag: Option<Option<String>> = Some(None);
         let mut user_id: Option<String> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct ScanEndpointParams, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct ScanEndpointParams, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-            0 => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),1 => target = Some(d.str()?.to_string()),2 => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),3 => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( d.str()?.to_string() ))
-                                    },
-                   4 => user_id = Some(d.str()?.to_string()),
-                    _ => d.skip()?,
+                    0 => {
+                        subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                        })?)
                     }
+                    1 => target = Some(d.str()?.to_string()),
+                    2 => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    3 => {
+                        user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    4 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                "subdomain" => subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))?),"target" => target = Some(d.str()?.to_string()),"timestamp" => timestamp = Some(wasmbus_rpc::Timestamp{ sec: d.i64()?, nsec: d.u32()? }),"userAgentTag" => user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                        d.skip()?;
-                                        Some(None)
-                                    } else {
-                                        Some(Some( d.str()?.to_string() ))
-                                    },
-                   "userId" => user_id = Some(d.str()?.to_string()),         _ => d.skip()?,
+                    "subdomain" => {
+                        subdomain = Some(crate::common::decode_subdomain(d).map_err(|e| {
+                            format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                        })?)
                     }
+                    "target" => target = Some(d.str()?.to_string()),
+                    "timestamp" => {
+                        timestamp = Some(wasmbus_rpc::Timestamp {
+                            sec: d.i64()?,
+                            nsec: d.u32()?,
+                        })
+                    }
+                    "userAgentTag" => {
+                        user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
             }
         }
         ScanEndpointParams {
@@ -125,8 +154,7 @@ pub fn decode_scan_endpoint_params(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanEndpointParams.subdomain (#0)"
-                        .to_string(),
+                    "missing field ScanEndpointParams.subdomain (#0)".to_string(),
                 ));
             },
 
@@ -142,8 +170,7 @@ pub fn decode_scan_endpoint_params(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanEndpointParams.timestamp (#2)"
-                        .to_string(),
+                    "missing field ScanEndpointParams.timestamp (#2)".to_string(),
                 ));
             },
             user_agent_tag: user_agent_tag.unwrap(),
@@ -219,43 +246,41 @@ pub fn decode_scan_endpoint_result(
 ) -> Result<ScanEndpointResult, RpcError> {
     let __result = {
         let mut reason: Option<Option<String>> = Some(None);
-        let mut subdomain: Option<Option<crate::common::Subdomain>> =
-            Some(None);
+        let mut subdomain: Option<Option<crate::common::Subdomain>> = Some(None);
         let mut success: Option<bool> = None;
         let mut target: Option<String> = None;
         let mut timestamp: Option<Timestamp> = None;
         let mut user_id: Option<String> = None;
 
-        let is_array =
-            match d.datatype()? {
-                wasmbus_rpc::cbor::Type::Array => true,
-                wasmbus_rpc::cbor::Type::Map => false,
-                _ => return Err(RpcError::Deser(
-                    "decoding struct ScanEndpointResult, expected array or map"
-                        .to_string(),
-                )),
-            };
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct ScanEndpointResult, expected array or map".to_string(),
+                ))
+            }
+        };
         if is_array {
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
                     0 => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    1 => {
-                        subdomain = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    1 => {
+                        subdomain = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(crate::common::decode_subdomain(d).map_err(|e| {
+                                format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                            })?))
                         }
                     }
                     2 => success = Some(d.bool()?),
@@ -275,22 +300,21 @@ pub fn decode_scan_endpoint_result(
             for __i in 0..(len as usize) {
                 match d.str()? {
                     "reason" => {
-                        reason =
-                            if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
-                                d.skip()?;
-                                Some(None)
-                            } else {
-                                Some(Some(d.str()?.to_string()))
-                            }
-                    }
-                    "subdomain" => {
-                        subdomain = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
+                        reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
                         } else {
-                            Some(Some( crate::common::decode_subdomain(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e))? ))
+                            Some(Some(d.str()?.to_string()))
+                        }
+                    }
+                    "subdomain" => {
+                        subdomain = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
+                            d.skip()?;
+                            Some(None)
+                        } else {
+                            Some(Some(crate::common::decode_subdomain(d).map_err(|e| {
+                                format!("decoding 'jclmnop.dtbh.interface.common#Subdomain': {}", e)
+                            })?))
                         }
                     }
                     "success" => success = Some(d.bool()?),
@@ -330,8 +354,7 @@ pub fn decode_scan_endpoint_result(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanEndpointResult.timestamp (#4)"
-                        .to_string(),
+                    "missing field ScanEndpointResult.timestamp (#4)".to_string(),
                 ));
             },
 
@@ -369,29 +392,14 @@ pub trait HttpEndpointScanner {
 /// are found. Can be triggered by actor to actor calls or message subscriptions.
 #[doc(hidden)]
 #[async_trait]
-pub trait HttpEndpointScannerReceiver:
-    MessageDispatch + HttpEndpointScanner
-{
-    async fn dispatch(
-        &self,
-        ctx: &Context,
-        message: Message<'_>,
-    ) -> Result<Vec<u8>, RpcError> {
+pub trait HttpEndpointScannerReceiver: MessageDispatch + HttpEndpointScanner {
+    async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "ScanEndpoint" => {
-                let value: ScanEndpointParams =
-                    wasmbus_rpc::common::deserialize(&message.arg).map_err(
-                        |e| {
-                            RpcError::Deser(format!(
-                                "'ScanEndpointParams': {}",
-                                e
-                            ))
-                        },
-                    )?;
+                let value: ScanEndpointParams = wasmbus_rpc::common::deserialize(&message.arg)
+                    .map_err(|e| RpcError::Deser(format!("'ScanEndpointParams': {}", e)))?;
 
-                let resp =
-                    HttpEndpointScanner::scan_endpoint(self, ctx, &value)
-                        .await?;
+                let resp = HttpEndpointScanner::scan_endpoint(self, ctx, &value).await?;
                 let buf = wasmbus_rpc::common::serialize(&resp)?;
 
                 Ok(buf)
@@ -425,9 +433,7 @@ impl<T: Transport> HttpEndpointScannerSender<T> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'send>
-    HttpEndpointScannerSender<wasmbus_rpc::provider::ProviderTransport<'send>>
-{
+impl<'send> HttpEndpointScannerSender<wasmbus_rpc::provider::ProviderTransport<'send>> {
     /// Constructs a Sender using an actor's LinkDefinition,
     /// Uses the provider's HostBridge for rpc
     pub fn for_actor(ld: &'send wasmbus_rpc::core::LinkDefinition) -> Self {
@@ -441,10 +447,8 @@ impl HttpEndpointScannerSender<wasmbus_rpc::actor::prelude::WasmHost> {
     /// Constructs a client for actor-to-actor messaging
     /// using the recipient actor's public key
     pub fn to_actor(actor_id: &str) -> Self {
-        let transport = wasmbus_rpc::actor::prelude::WasmHost::to_actor(
-            actor_id.to_string(),
-        )
-        .unwrap();
+        let transport =
+            wasmbus_rpc::actor::prelude::WasmHost::to_actor(actor_id.to_string()).unwrap();
         Self { transport }
     }
 }
@@ -474,9 +478,7 @@ impl<T: Transport + std::marker::Sync + std::marker::Send> HttpEndpointScanner
             .await?;
 
         let value: ScanEndpointResult = wasmbus_rpc::common::deserialize(&resp)
-            .map_err(|e| {
-                RpcError::Deser(format!("'{}': ScanEndpointResult", e))
-            })?;
+            .map_err(|e| RpcError::Deser(format!("'{}': ScanEndpointResult", e)))?;
         Ok(value)
     }
 }

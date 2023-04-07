@@ -15,6 +15,7 @@ pub use api::*;
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
 pub const PUB_RESULTS_TOPIC: &str = "dtbh.reports.in";
 
+// #[cfg(all(feature = "actor", target_arch = "wasm32"))]
 #[cfg(feature = "actor")]
 pub mod scanner_prelude {
     pub use crate::common::*;
@@ -22,7 +23,7 @@ pub mod scanner_prelude {
         HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams,
         ScanEndpointResult,
     };
-    use crate::{PUB_RESULTS_TOPIC, Report, TASKS_TOPIC};
+    use crate::{Report, PUB_RESULTS_TOPIC, TASKS_TOPIC};
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, StreamExt};
@@ -65,7 +66,11 @@ pub mod scanner_prelude {
         ) -> RpcResult<()> {
             let params: ScanEndpointParams = serde_json::from_slice(&msg.body)
                 .map_err(|e| RpcError::Deser(e.to_string()))?;
-            let (target, user_id, timestamp) = (params.target.clone(), params.user_id.clone(), params.timestamp.clone());
+            let (target, user_id, timestamp) = (
+                params.target.clone(),
+                params.user_id.clone(),
+                params.timestamp.clone(),
+            );
             let result = match self.scan_all(ctx, params).await {
                 Ok(result) => result,
                 Err(e) => ScanEndpointResult {
@@ -99,7 +104,11 @@ pub mod scanner_prelude {
             let topic = Self::pub_topic();
             if result.success {
                 let report = Report {
-                    subdomains: if let Some(subdomain) = result.subdomain {vec![subdomain]} else {vec![]},
+                    subdomains: if let Some(subdomain) = result.subdomain {
+                        vec![subdomain]
+                    } else {
+                        vec![]
+                    },
                     target: result.target,
                     timestamp: result.timestamp,
                     user_id: result.user_id,
@@ -132,7 +141,9 @@ pub mod scanner_prelude {
             .map(|mut p| {
                 let url = format!("http://{url}:{}", p.port);
                 async {
-                    if let Ok(Some(finding)) = self.scan(ctx, url, &params.user_agent_tag).await {
+                    if let Ok(Some(finding)) =
+                        self.scan(ctx, url, &params.user_agent_tag).await
+                    {
                         p.findings.push(finding);
                     } //TODO: log error?
                     p

@@ -1,7 +1,6 @@
 use dtbh_interface::report_writer_prelude::*;
 use dtbh_interface::scanner_prelude::*;
 use dtbh_interface::{GetReportsRequest, GetReportsResult};
-use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
@@ -43,12 +42,15 @@ impl MessageSubscriber for ReportActor {
         ctx: &Context,
         msg: &SubMessage,
     ) -> RpcResult<()> {
-        let report: Report = serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
-        let report_json = serde_json::to_string_pretty(&report).map_err(|e| RpcError::Ser(e.to_string()))?;
+        let report: Report = serde_json::from_slice(&msg.body)
+            .map_err(|e| RpcError::Deser(e.to_string()))?;
+        let report_json = serde_json::to_string_pretty(&report)
+            .map_err(|e| RpcError::Ser(e.to_string()))?;
         let pub_msg = PubMessage {
             subject: PUB_TOPIC.to_string(),
             reply_to: None,
-            body: serde_json::to_vec(&report_json).map_err(|e| RpcError::Ser(e.to_string()))?,
+            body: serde_json::to_vec(&report_json)
+                .map_err(|e| RpcError::Ser(e.to_string()))?,
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
         publisher.publish(ctx, &pub_msg).await
