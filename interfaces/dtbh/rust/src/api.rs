@@ -81,12 +81,14 @@ pub fn decode_scan_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => targets = Some(decode_targets(d).map_err(|e| {
-                        format!(
+                    0 => {
+                        targets = Some(decode_targets(d).map_err(|e| {
+                            format!(
                             "decoding 'jclmnop.dtbh.interface.api#Targets': {}",
                             e
                         )
-                    })?),
+                        })?)
+                    }
                     1 => {
                         user_agent_tag =
                             if wasmbus_rpc::cbor::Type::Null == d.datatype()? {

@@ -22,17 +22,19 @@ pub mod scanner_prelude {
         HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams,
         ScanEndpointResult,
     };
-    pub use wasmbus_rpc::actor::prelude::*;
-    pub use async_trait::async_trait;
-    pub use anyhow::Result;
-    pub use wasmcloud_interface_logging::{debug, error, info};
-    use wasmbus_rpc::common::Context;
-    use wasmbus_rpc::error::RpcResult;
-    pub use wasmcloud_interface_messaging::{
-        MessageSubscriber, MessagingSender, Messaging, PubMessage, SubMessage, MessageSubscriberReceiver,
-    };
-    pub use wasmcloud_interface_httpclient::*;
     use crate::{PUB_RESULTS_TOPIC, TASKS_TOPIC};
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use futures::{stream, StreamExt};
+    pub use wasmbus_rpc::actor::prelude::*;
+    pub use wasmbus_rpc::common::Context;
+    pub use wasmbus_rpc::error::RpcResult;
+    pub use wasmcloud_interface_httpclient::*;
+    pub use wasmcloud_interface_logging::{debug, error, info};
+    pub use wasmcloud_interface_messaging::{
+        MessageSubscriber, MessageSubscriberReceiver, Messaging,
+        MessagingSender, PubMessage, SubMessage,
+    };
 
     /// Scanner module actor to be wrapped by `MessageHandler`. Only the `scan()`
     /// method is required to be implemented.
@@ -56,15 +58,24 @@ pub mod scanner_prelude {
         }
 
         /// Process the message received by `handle_message()`
-        async fn process_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
-            let params: ScanEndpointParams = serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
-            let result = match self.scan(ctx, params).await {
+        async fn process_message(
+            &self,
+            ctx: &Context,
+            msg: &SubMessage,
+        ) -> RpcResult<()> {
+            let params: ScanEndpointParams = serde_json::from_slice(&msg.body)
+                .map_err(|e| RpcError::Deser(e.to_string()))?;
+            let result = match self.scan_all(ctx, params).await {
                 Ok(result) => result,
                 Err(e) => ScanEndpointResult {
                     subdomain: None,
-                    reason: Some(format!("{} failed: {}", Self::name(), e.to_string())),
+                    reason: Some(format!(
+                        "{} failed: {}",
+                        Self::name(),
+                        e.to_string()
+                    )),
                     success: false,
-                }
+                },
             };
             match self.publish_result(ctx, result).await {
                 Ok(_) => {}
@@ -73,11 +84,14 @@ pub mod scanner_prelude {
                 }
             }
             Ok(())
-
         }
 
         /// Publish results from a scan to Self::pub_topic()
-        async fn publish_result(&self, ctx: &Context, result: ScanEndpointResult) -> Result<()> {
+        async fn publish_result(
+            &self,
+            ctx: &Context,
+            result: ScanEndpointResult,
+        ) -> Result<()> {
             let topic = Self::pub_topic();
             let msg = PubMessage {
                 subject: topic.to_string(),
@@ -89,13 +103,56 @@ pub mod scanner_prelude {
         }
 
         /// Scan endpoints for the vulnerability this scanner specialises in
-        async fn scan(&self, ctx: &Context, params: ScanEndpointParams) -> Result<ScanEndpointResult>;
+        async fn scan_all(
+            &self,
+            ctx: &Context,
+            mut params: ScanEndpointParams,
+        ) -> Result<ScanEndpointResult> {
+            let url = params.subdomain.subdomain.to_owned();
+            params.subdomain.open_ports = stream::iter(
+                params
+                    .subdomain
+                    .open_ports
+                    .into_iter()
+                    .filter(|p| p.is_open),
+            )
+            .map(|mut p| {
+                let url = format!("http://{url}:{}", p.port);
+                async {
+                    if let Ok(Some(finding)) = self.scan(ctx, url).await {
+                        p.findings.push(finding);
+                    } //TODO: log error?
+                    p
+                }
+            })
+            .buffer_unordered(1)
+            .collect()
+            .await;
+
+            params.subdomain.open_ports = params
+                .subdomain
+                .open_ports
+                .into_iter()
+                .filter(|p| !p.findings.is_empty())
+                .collect();
+
+            Ok(ScanEndpointResult {
+                reason: None,
+                subdomain: Some(params.subdomain),
+                success: true,
+            })
+        }
+
+        async fn scan(
+            &self,
+            ctx: &Context,
+            target_endpoint: String,
+        ) -> RpcResult<Option<Finding>>;
     }
 }
 
 #[cfg(feature = "actor")]
 pub mod orchestrator_prelude {
-    pub use anyhow::Result;
     pub use crate::common::*;
     pub use crate::http_endpoint_scanner::{
         HttpEndpointScannerSender, ScanEndpointParams, ScanEndpointResult,
@@ -106,6 +163,7 @@ pub mod orchestrator_prelude {
     pub use crate::report_writer::{
         Report, ReportWriterSender, WriteReportResult,
     };
+    pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, Future, FutureExt};
     pub use wasmcloud_interface_logging::{debug, error, info};
@@ -113,33 +171,40 @@ pub mod orchestrator_prelude {
 
 #[cfg(feature = "actor")]
 pub mod report_writer_prelude {
-    pub use anyhow::Result;
     pub use crate::common::*;
     pub use crate::report_writer::{
         Report, ReportWriter, ReportWriterReceiver, WriteReportResult,
     };
+    pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use wasmcloud_interface_logging::{debug, error, info};
 }
 
 #[cfg(feature = "actor")]
 pub mod api_gateway_prelude {
+    pub use crate::api::ScanRequest;
+    pub use crate::common::*;
+    pub use crate::orchestrator::{
+        Orchestrator, OrchestratorSender, RunScansRequest,
+    };
+    pub use crate::report_writer::{
+        GetReportsRequest, GetReportsResult, ReportWriter, ReportWriterSender,
+    };
+    pub use crate::Reports;
     use anyhow::anyhow;
     pub use anyhow::Result;
     pub use wasmcloud_interface_logging::{debug, error, info};
-    pub use crate::common::*;
-    pub use crate::report_writer::{GetReportsRequest, GetReportsResult, ReportWriter, ReportWriterSender};
-    pub use crate::orchestrator::{RunScansRequest, OrchestratorSender, Orchestrator};
-    pub use crate::api::ScanRequest;
-    pub use crate::Reports;
 
     //TODO: make a trait for this and impl for other "result" types?
     impl GetReportsResult {
-        pub fn result<'a>(&'a self) -> Result<&'a Option<Reports>> {
+        pub fn result(&self) -> Result<&Option<Reports>> {
             if self.success {
                 Ok(&self.reports)
             } else {
-                Err(anyhow!("Error fetching reports: {}", self.reason.clone().unwrap_or("unknown".to_string())))
+                Err(anyhow!(
+                    "Error fetching reports: {}",
+                    self.reason.clone().unwrap_or("unknown".to_string())
+                ))
             }
         }
     }

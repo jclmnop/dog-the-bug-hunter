@@ -160,8 +160,7 @@ pub fn decode_findings(
 }
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Port {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub findings: Option<Findings>,
+    pub findings: Findings,
     #[serde(rename = "isOpen")]
     #[serde(default)]
     pub is_open: bool,
@@ -180,12 +179,8 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(3)?;
-    if let Some(val) = val.findings.as_ref() {
-        e.str("findings")?;
-        encode_findings(e, val)?;
-    } else {
-        e.null()?;
-    }
+    e.str("findings")?;
+    encode_findings(e, &val.findings)?;
     e.str("isOpen")?;
     e.bool(val.is_open)?;
     e.str("port")?;
@@ -199,7 +194,7 @@ pub fn decode_port(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<Port, RpcError> {
     let __result = {
-        let mut findings: Option<Option<Findings>> = Some(None);
+        let mut findings: Option<Findings> = None;
         let mut is_open: Option<bool> = None;
         let mut port: Option<u16> = None;
 
@@ -216,43 +211,26 @@ pub fn decode_port(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => {
-                        findings = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))? ))
-                        }
-                    }
-                    1 => is_open = Some(d.bool()?),
-                    2 => port = Some(d.u16()?),
+            0 => findings = Some(decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))?),1 => is_open = Some(d.bool()?),2 => port = Some(d.u16()?),
                     _ => d.skip()?,
-                }
+                    }
             }
         } else {
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
-                    "findings" => {
-                        findings = if wasmbus_rpc::cbor::Type::Null
-                            == d.datatype()?
-                        {
-                            d.skip()?;
-                            Some(None)
-                        } else {
-                            Some(Some( decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))? ))
-                        }
+                "findings" => findings = Some(decode_findings(d).map_err(|e| format!("decoding 'jclmnop.dtbh.interface.common#Findings': {}", e))?),"isOpen" => is_open = Some(d.bool()?),"port" => port = Some(d.u16()?),         _ => d.skip()?,
                     }
-                    "isOpen" => is_open = Some(d.bool()?),
-                    "port" => port = Some(d.u16()?),
-                    _ => d.skip()?,
-                }
             }
         }
         Port {
-            findings: findings.unwrap(),
+            findings: if let Some(__x) = findings {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field Port.findings (#0)".to_string(),
+                ));
+            },
 
             is_open: if let Some(__x) = is_open {
                 __x

@@ -13,6 +13,7 @@ structure Port {
   @required
   port: U16,
   isOpen: Boolean,
+  @required
   findings: Findings,
 }
 
