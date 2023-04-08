@@ -88,7 +88,7 @@ providers to the super-constellation, on any cloud provider.
 - [ ] Implement at least 4 different vulnerability scanners, can be fairly simple
   - [ ] elasticsearch unauthenticated access 
   - [x] dotenv disclosure
-  - [ ] basic SQLi?
+  - [x] basic SQLi?
   - [ ] a recent CVE
 #### ui-actor
 - [ ] only if everything else is finished first
@@ -106,7 +106,6 @@ providers to the super-constellation, on any cloud provider.
   - [ ] signup
   - [ ] signin
 #### "wasmcloud:timing" interface + provider
-Probably won't need this one myself anymore, but will still publish it
 - [x] publish interface to crate
 - [x] publish provider to OCI
 - [ ] add to wasmcloud examples repo
@@ -123,6 +122,8 @@ Probably won't need this one myself anymore, but will still publish it
 - [ ] Figure out optimal concurrency values for endpoint enumerator provider
 - [ ] Trim down the list of ports, or add a config for endpoint enumerator provider
 - [ ] Test scalability with a separate containerised deployment on Railway and Digital Ocean 
-      (extra providers on Digital Ocean, extra actors on Railway)
+      (extra providers on Digital Ocean, extra actors on Railway?)
 - [ ] Encrypt report data in KV storage + store user private keys in vault
 - [ ] customisable wordlists stored in user-specific KV storage
+- [ ] blind TRUE/FALSE SQLi
+- [ ] blind sleep based SQLi
