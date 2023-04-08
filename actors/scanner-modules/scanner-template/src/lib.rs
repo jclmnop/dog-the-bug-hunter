@@ -1,6 +1,5 @@
 use dtbh_interface::scanner_prelude::*;
 use once_cell::sync::Lazy;
-use wasmbus_rpc::actor::prelude::*;
 
 const CALL_ALIAS: &str = "dtb/scanner/<template>";
 static HTTP_CLIENT: Lazy<HttpClientSender<WasmHost>> =
