@@ -99,16 +99,13 @@ impl ProviderHandler for EndpointEnumeratorProvider {
 #[async_trait]
 impl EndpointEnumerator for EndpointEnumeratorProvider {
     #[instrument(name = "enumerate_endpoints", skip(self, ctx, req))]
-    async fn enumerate_endpoints(
-        &self,
-        ctx: &Context,
-        req: &RunScansRequest,
-    ) -> RpcResult<()> {
+    async fn enumerate_endpoints(&self, ctx: &Context, req: &RunScansRequest) -> RpcResult<()> {
         let ld = {
             let host_bridge = get_host_bridge();
-            let actor_id = ctx.actor.as_ref().ok_or(RpcError::Other(
-                "Unable to find actor ID".to_string(),
-            ))?;
+            let actor_id = ctx
+                .actor
+                .as_ref()
+                .ok_or(RpcError::Other("Unable to find actor ID".to_string()))?;
             host_bridge.get_link(actor_id).await.ok_or(RpcError::Other(
                 "Unable to find link definition".to_string(),
             ))?
@@ -117,9 +114,7 @@ impl EndpointEnumerator for EndpointEnumeratorProvider {
         let ctx = ctx.to_owned();
         let permit = self.inner.work_permits.clone();
         let req = req.to_owned();
-        tokio::task::spawn(async move {
-            Self::handle_callback(ctx, req, ld, permit).await
-        });
+        tokio::task::spawn(async move { Self::handle_callback(ctx, req, ld, permit).await });
         Ok(())
     }
 }
@@ -134,8 +129,7 @@ impl EndpointEnumeratorProvider {
         link_def: LinkDefinition,
         work_permits: Arc<WorkPermits>,
     ) -> Result<()> {
-        let actor =
-            EndpointEnumeratorCallbackReceiverSender::for_actor(&link_def);
+        let actor = EndpointEnumeratorCallbackReceiverSender::for_actor(&link_def);
 
         // Only allow one request to be processed at a time
         let response = {
@@ -144,9 +138,7 @@ impl EndpointEnumeratorProvider {
                 let permits = work_permits.read().await;
                 permits
                     .get(&actor_id)
-                    .ok_or(RpcError::Other(
-                        "Unable to find permit".to_string(),
-                    ))?
+                    .ok_or(RpcError::Other("Unable to find permit".to_string()))?
                     .clone()
             };
             let _permit = permit.acquire().await?;
@@ -157,9 +149,7 @@ impl EndpointEnumeratorProvider {
         Ok(())
     }
 
-    async fn process_request(
-        req: &RunScansRequest,
-    ) -> EnumerateEndpointsResponse {
+    async fn process_request(req: &RunScansRequest) -> EnumerateEndpointsResponse {
         let url = req.target.as_str();
         let user_id = req.user_id.to_owned();
         info!("Enumerating endpoints for {}", url);
@@ -179,21 +169,20 @@ impl EndpointEnumeratorProvider {
             }
         };
 
-        let subdomains =
-            match Self::filter_unresolvable_domains(subdomains).await {
-                Ok(subdomains) => subdomains,
-                Err(e) => {
-                    error!("Error filtering unresolvable domains: {}", e);
-                    return EnumerateEndpointsResponse {
-                        reason: Some(e.to_string()),
-                        subdomains: None,
-                        success: false,
-                        target: req.target.clone(),
-                        timestamp,
-                        user_id,
-                    };
-                }
-            };
+        let subdomains = match Self::filter_unresolvable_domains(subdomains).await {
+            Ok(subdomains) => subdomains,
+            Err(e) => {
+                error!("Error filtering unresolvable domains: {}", e);
+                return EnumerateEndpointsResponse {
+                    reason: Some(e.to_string()),
+                    subdomains: None,
+                    success: false,
+                    target: req.target.clone(),
+                    timestamp,
+                    user_id,
+                };
+            }
+        };
 
         let subdomains = Self::scan_ports_for_subdomains(subdomains).await;
 
@@ -203,7 +192,7 @@ impl EndpointEnumeratorProvider {
             success: true,
             timestamp,
             user_id,
-            target: req.target.clone()
+            target: req.target.clone(),
         }
     }
 
@@ -222,9 +211,7 @@ impl EndpointEnumeratorProvider {
     }
 
     #[instrument(name = "filter_unresolvable_domains", skip(subdomains))]
-    async fn filter_unresolvable_domains(
-        subdomains: Subdomains,
-    ) -> Result<Subdomains> {
+    async fn filter_unresolvable_domains(subdomains: Subdomains) -> Result<Subdomains> {
         info!("Filtering unresolvable domains");
         let resolver = dns_resolver::new_resolver()?;
         Ok(stream::iter(subdomains.into_iter())
@@ -241,9 +228,7 @@ impl EndpointEnumeratorProvider {
         debug!("Scanning ports for {} subdomains", subdomains.len());
         trace!("Subdomains: {:#?}", subdomains);
         stream::iter(subdomains.into_iter())
-            .map(|subdomain| {
-                port_scanner::scan_ports(Self::PORT_CONCURRENCY, subdomain)
-            })
+            .map(|subdomain| port_scanner::scan_ports(Self::PORT_CONCURRENCY, subdomain))
             .buffer_unordered(1)
             .filter_map(|subdomain| async move {
                 if let Err(e) = &subdomain {

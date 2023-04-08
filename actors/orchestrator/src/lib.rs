@@ -19,11 +19,7 @@ struct OrchestratorActor {}
 
 #[async_trait]
 impl Orchestrator for OrchestratorActor {
-    async fn run_scans(
-        &self,
-        ctx: &Context,
-        req: &RunScansRequest,
-    ) -> RpcResult<bool> {
+    async fn run_scans(&self, ctx: &Context, req: &RunScansRequest) -> RpcResult<bool> {
         let enumerator = EndpointEnumeratorSender::new();
         enumerator.enumerate_endpoints(ctx, &req).await?;
 
@@ -55,10 +51,7 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
                             reply_to: None,
                             body,
                         };
-                        match MessagingSender::new()
-                            .publish(ctx, &pub_msg)
-                            .await
-                        {
+                        match MessagingSender::new().publish(ctx, &pub_msg).await {
                             Ok(_) => {
                                 debug!("Sent message to scanners");
                             }

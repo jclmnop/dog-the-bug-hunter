@@ -20,8 +20,7 @@ pub const PUB_RESULTS_TOPIC: &str = "dtbh.reports.in";
 pub mod scanner_prelude {
     pub use crate::common::*;
     pub use crate::http_endpoint_scanner::{
-        HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams,
-        ScanEndpointResult,
+        HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams, ScanEndpointResult,
     };
     use crate::{Report, PUB_RESULTS_TOPIC, TASKS_TOPIC};
     pub use anyhow::Result;
@@ -33,8 +32,8 @@ pub mod scanner_prelude {
     pub use wasmcloud_interface_httpclient::*;
     pub use wasmcloud_interface_logging::{debug, error, info};
     pub use wasmcloud_interface_messaging::{
-        MessageSubscriber, MessageSubscriberReceiver, Messaging,
-        MessagingSender, PubMessage, SubMessage,
+        MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingSender, PubMessage,
+        SubMessage,
     };
 
     /// Scanner module actor to be wrapped by `MessageHandler`. Only the `scan()`
@@ -59,13 +58,9 @@ pub mod scanner_prelude {
         }
 
         /// Process the message received by `handle_message()`
-        async fn process_message(
-            &self,
-            ctx: &Context,
-            msg: &SubMessage,
-        ) -> RpcResult<()> {
-            let params: ScanEndpointParams = serde_json::from_slice(&msg.body)
-                .map_err(|e| RpcError::Deser(e.to_string()))?;
+        async fn process_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+            let params: ScanEndpointParams =
+                serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
             let (target, user_id, timestamp) = (
                 params.target.clone(),
                 params.user_id.clone(),
@@ -75,11 +70,7 @@ pub mod scanner_prelude {
                 Ok(result) => result,
                 Err(e) => ScanEndpointResult {
                     subdomain: None,
-                    reason: Some(format!(
-                        "{} failed: {}",
-                        Self::name(),
-                        e.to_string()
-                    )),
+                    reason: Some(format!("{} failed: {}", Self::name(), e.to_string())),
                     success: false,
                     target,
                     timestamp,
@@ -96,11 +87,7 @@ pub mod scanner_prelude {
         }
 
         /// Publish results from a scan to Self::pub_topic()
-        async fn publish_result(
-            &self,
-            ctx: &Context,
-            result: ScanEndpointResult,
-        ) -> Result<()> {
+        async fn publish_result(&self, ctx: &Context, result: ScanEndpointResult) -> Result<()> {
             let topic = Self::pub_topic();
             if result.success {
                 let report = Report {
@@ -141,9 +128,7 @@ pub mod scanner_prelude {
             .map(|mut p| {
                 let url = format!("http://{url}:{}", p.port);
                 async {
-                    if let Ok(Some(finding)) =
-                        self.scan(ctx, url, &params.user_agent_tag).await
-                    {
+                    if let Ok(Some(finding)) = self.scan(ctx, url, &params.user_agent_tag).await {
                         p.findings.push(finding);
                     } //TODO: log error?
                     p
@@ -185,12 +170,8 @@ pub mod orchestrator_prelude {
     pub use crate::http_endpoint_scanner::{
         HttpEndpointScannerSender, ScanEndpointParams, ScanEndpointResult,
     };
-    pub use crate::orchestrator::{
-        Orchestrator, OrchestratorReceiver, OrchestratorSender,
-    };
-    pub use crate::report_writer::{
-        Report, ReportWriterSender, WriteReportResult,
-    };
+    pub use crate::orchestrator::{Orchestrator, OrchestratorReceiver, OrchestratorSender};
+    pub use crate::report_writer::{Report, ReportWriterSender, WriteReportResult};
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, Future, FutureExt};
@@ -200,9 +181,7 @@ pub mod orchestrator_prelude {
 #[cfg(feature = "actor")]
 pub mod report_writer_prelude {
     pub use crate::common::*;
-    pub use crate::report_writer::{
-        Report, ReportWriter, ReportWriterReceiver, WriteReportResult,
-    };
+    pub use crate::report_writer::{Report, ReportWriter, ReportWriterReceiver, WriteReportResult};
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use wasmcloud_interface_logging::{debug, error, info};
@@ -212,9 +191,7 @@ pub mod report_writer_prelude {
 pub mod api_gateway_prelude {
     pub use crate::api::ScanRequest;
     pub use crate::common::*;
-    pub use crate::orchestrator::{
-        Orchestrator, OrchestratorSender, RunScansRequest,
-    };
+    pub use crate::orchestrator::{Orchestrator, OrchestratorSender, RunScansRequest};
     pub use crate::report_writer::{
         GetReportsRequest, GetReportsResult, ReportWriter, ReportWriterSender,
     };

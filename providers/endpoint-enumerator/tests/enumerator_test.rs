@@ -1,5 +1,10 @@
 mod utils;
 
+use dtbh_interface::common::{Port, Subdomains};
+use dtbh_interface::endpoint_enumerator::{
+    EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse,
+};
+use dtbh_interface::orchestrator::RunScansRequest;
 use futures::StreamExt;
 use std::collections::HashMap;
 use tracing::info;
@@ -9,14 +14,8 @@ use wasmbus_rpc::common::deserialize;
 use wasmbus_rpc::core::Invocation;
 use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
-use dtbh_interface::endpoint_enumerator::{
-    EndpointEnumerator, EndpointEnumeratorSender, EnumerateEndpointsResponse,
-};
-use dtbh_interface::orchestrator::RunScansRequest;
-use dtbh_interface::common::{ Port, Subdomains };
 use wasmcloud_test_util::{
-    check, cli::print_test_results, provider_test::test_provider,
-    testing::TestOptions,
+    check, cli::print_test_results, provider_test::test_provider, testing::TestOptions,
 };
 #[allow(unused_imports)]
 use wasmcloud_test_util::{run_selected, run_selected_spawn};
@@ -66,14 +65,13 @@ async fn mock_callback_actor(
             .map_err(|e| RpcError::Nats(e.to_string()))?;
         let mut responses = Vec::new();
         'callback: while let Some(msg) = sub.next().await {
-            let inv: Invocation = deserialize(&msg.payload)
-                .map_err(|e| RpcError::Deser(e.to_string()))?;
+            let inv: Invocation =
+                deserialize(&msg.payload).map_err(|e| RpcError::Deser(e.to_string()))?;
             if &inv.operation != "EndpointEnumeratorCallbackReceiver.EnumerateEndpointsCallback" {
                 error!("unexpected invocation: {:?}", &inv);
             } else {
                 info!("Callback received!");
-                let response = deserialize(&inv.msg)
-                    .map_err(|e| RpcError::Deser(e.to_string()))?;
+                let response = deserialize(&inv.msg).map_err(|e| RpcError::Deser(e.to_string()))?;
                 responses.push(response);
                 n_requests -= 1;
                 if n_requests == 0 {
@@ -171,8 +169,7 @@ async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
 
     // Wait for the mock actor to receive and process the responses
     info!("waiting for mock actor to receive and process responses...");
-    let responses =
-        actor.await.map_err(|e| RpcError::Other(e.to_string()))??;
+    let responses = actor.await.map_err(|e| RpcError::Other(e.to_string()))??;
 
     check!(responses.len() == n_requests as usize)?;
 
@@ -183,9 +180,7 @@ async fn test_jobs_queued_sequentially(_opt: &TestOptions) -> RpcResult<()> {
         let res = responses[i as usize - 1].clone();
         check!(res.success)?;
         check!(res.reason.is_none())?;
-        check!(
-            res.subdomains.as_ref().unwrap().first().unwrap().subdomain == url
-        )?;
+        check!(res.subdomains.as_ref().unwrap().first().unwrap().subdomain == url)?;
     }
 
     Ok(())

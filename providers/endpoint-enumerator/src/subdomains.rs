@@ -12,9 +12,10 @@ pub async fn enumerate_subdomains(domain: &str) -> Result<Subdomains> {
     let url = format!("https://crt.sh/?q=%25.{domain}&output=json");
     let res = reqwest::get(&url).await?;
 
-    let crt_sh_response: Vec<CrtShEntry> = res.json().await.map_err(|e| {
-        anyhow::anyhow!("\nError decoding crt.sh response: {e}")
-    })?;
+    let crt_sh_response: Vec<CrtShEntry> = res
+        .json()
+        .await
+        .map_err(|e| anyhow::anyhow!("\nError decoding crt.sh response: {e}"))?;
 
     Ok(parse_crt_sh_response(crt_sh_response)
         .into_iter()
@@ -89,17 +90,14 @@ mod tests {
         ]
         "#;
 
-        let crt_sh_response: Vec<CrtShEntry> =
-            serde_json::from_str(raw_response).unwrap();
+        let crt_sh_response: Vec<CrtShEntry> = serde_json::from_str(raw_response).unwrap();
 
         let subdomains = parse_crt_sh_response(crt_sh_response);
 
         assert_eq!(subdomains.len(), 3);
         assert!(subdomains.contains(&"github.com".to_string()));
         assert!(subdomains.contains(&"www.github.com".to_string()));
-        assert!(
-            subdomains.contains(&"support.enterprise.github.com".to_string())
-        );
+        assert!(subdomains.contains(&"support.enterprise.github.com".to_string()));
     }
 
     // #[tokio::test]

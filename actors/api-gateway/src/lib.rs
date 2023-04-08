@@ -1,9 +1,7 @@
 use anyhow::{anyhow, Error};
 use dtbh_interface::api_gateway_prelude::*;
 use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_httpserver::{
-    HttpRequest, HttpResponse, HttpServer, HttpServerReceiver,
-};
+use wasmcloud_interface_httpserver::{HttpRequest, HttpResponse, HttpServer, HttpServerReceiver};
 
 #[allow(dead_code)]
 const CALL_ALIAS: &str = "dtbh/api-gateway";
@@ -23,18 +21,12 @@ enum RequestType {
 //TODO: better error handling
 #[async_trait]
 impl HttpServer for ApiGatewayActor {
-    async fn handle_request(
-        &self,
-        ctx: &Context,
-        req: &HttpRequest,
-    ) -> RpcResult<HttpResponse> {
+    async fn handle_request(&self, ctx: &Context, req: &HttpRequest) -> RpcResult<HttpResponse> {
         if auth(ctx, req).await {
             match RequestType::from(req.to_owned()) {
-                RequestType::GetReports(reports_request) => {
-                    Ok(get_reports(ctx, reports_request)
-                        .await
-                        .unwrap_or(HttpResponse::not_found()))
-                }
+                RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
+                    .await
+                    .unwrap_or(HttpResponse::not_found())),
                 RequestType::Scan(scan_request) => Ok(scan(ctx, scan_request)
                     .await
                     .unwrap_or(HttpResponse::not_found())),
@@ -60,8 +52,7 @@ async fn auth(ctx: &Context, req: &HttpRequest) -> bool {
 
 async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
     debug!("Scan request: {:#?}", req);
-    let orchestrator: OrchestratorSender<_> =
-        OrchestratorSender::to_actor("dtbh/orchestrator");
+    let orchestrator: OrchestratorSender<_> = OrchestratorSender::to_actor("dtbh/orchestrator");
     let targets = req.targets;
     let mut failures: Vec<String> = vec![];
 
@@ -80,8 +71,7 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
     if failures.is_empty() {
         Ok(HttpResponse::ok(vec![]))
     } else {
-        let mut error_string =
-            String::from("The following targets failed to begin scanning:");
+        let mut error_string = String::from("The following targets failed to begin scanning:");
         failures
             .into_iter()
             .for_each(|f| error_string.extend(format!("\n\t{f}").chars()));
@@ -89,19 +79,16 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
     }
 }
 
-async fn get_reports(
-    ctx: &Context,
-    req: GetReportsRequest,
-) -> RpcResult<HttpResponse> {
-    let report_writer: ReportWriterSender<_> =
-        ReportWriterSender::to_actor("dtbh/report-writer");
+async fn get_reports(ctx: &Context, req: GetReportsRequest) -> RpcResult<HttpResponse> {
+    let report_writer: ReportWriterSender<_> = ReportWriterSender::to_actor("dtbh/report-writer");
     match report_writer.get_reports(ctx, &req).await {
         Ok(reports_result) => match reports_result.result() {
             Ok(reports) => {
                 let reports = reports.to_owned().unwrap_or(vec![]);
                 match serde_json::to_vec(&reports) {
-                    Ok(reports) => Ok(HttpResponse::json(reports, 200)
-                        .unwrap_or(HttpResponse::not_found())),
+                    Ok(reports) => {
+                        Ok(HttpResponse::json(reports, 200).unwrap_or(HttpResponse::not_found()))
+                    }
                     Err(e) => {
                         error!("Error serialising reports: {e}");
                         Ok(HttpResponse::not_found())
@@ -125,25 +112,15 @@ impl From<HttpRequest> for RequestType {
         let path = req.path.trim_matches(|c| c == ' ' || c == '/');
         let method = req.method.to_ascii_uppercase();
         match (method.as_str(), path) {
-            ("POST", "scan") => {
-                match serde_json::from_slice::<ScanRequest>(&req.body) {
-                    Ok(scan_request) => Self::Scan(scan_request),
-                    Err(e) => Self::Invalid(anyhow!(
-                        "Invalid body for scan request: {e}"
-                    )),
-                }
-            }
-            ("POST", "reports") => {
-                match serde_json::from_slice::<GetReportsRequest>(&req.body) {
-                    Ok(reports_request) => Self::GetReports(reports_request),
-                    Err(e) => Self::Invalid(anyhow!(
-                        "Invalid body for reports request: {e}"
-                    )),
-                }
-            }
-            _ => Self::Invalid(anyhow!(
-                "Invalid method or path {method}: {path}"
-            )),
+            ("POST", "scan") => match serde_json::from_slice::<ScanRequest>(&req.body) {
+                Ok(scan_request) => Self::Scan(scan_request),
+                Err(e) => Self::Invalid(anyhow!("Invalid body for scan request: {e}")),
+            },
+            ("POST", "reports") => match serde_json::from_slice::<GetReportsRequest>(&req.body) {
+                Ok(reports_request) => Self::GetReports(reports_request),
+                Err(e) => Self::Invalid(anyhow!("Invalid body for reports request: {e}")),
+            },
+            _ => Self::Invalid(anyhow!("Invalid method or path {method}: {path}")),
         }
     }
 }
@@ -158,14 +135,10 @@ mod tests {
     #[webassembly_test]
     fn test_parse_req_type_scan() {
         let valid_scan_req = ScanRequest {
-            targets: vec![
-                "www.google.com",
-                "www.github.com",
-                "www.cosmonic.com",
-            ]
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect(),
+            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
             user_id: "test".to_string(),
             user_agent_tag: None,
         };
@@ -213,14 +186,10 @@ mod tests {
     #[webassembly_test]
     fn test_parse_req_type_invalid() {
         let valid_scan_req = ScanRequest {
-            targets: vec![
-                "www.google.com",
-                "www.github.com",
-                "www.cosmonic.com",
-            ]
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect(),
+            targets: vec!["www.google.com", "www.github.com", "www.cosmonic.com"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
             user_id: "test".to_string(),
             user_agent_tag: None,
         };

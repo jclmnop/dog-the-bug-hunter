@@ -9,16 +9,12 @@ use tokio::time::timeout;
 use tracing::{info, instrument, trace, warn};
 
 #[instrument(level = "info", name = "scan_ports", fields(subdomain = %subdomain.subdomain))]
-pub async fn scan_ports(
-    concurrency: usize,
-    mut subdomain: Subdomain,
-) -> Result<Subdomain> {
+pub async fn scan_ports(concurrency: usize, mut subdomain: Subdomain) -> Result<Subdomain> {
     info!("Scanning ports for {}", subdomain.subdomain);
-    let socket_addresses: Vec<SocketAddr> =
-        format!("{}:1024", subdomain.subdomain)
-            .to_socket_addrs()
-            .map_err(|e| anyhow!("\nsubdomain:{}\n{e}", subdomain.subdomain))?
-            .collect();
+    let socket_addresses: Vec<SocketAddr> = format!("{}:1024", subdomain.subdomain)
+        .to_socket_addrs()
+        .map_err(|e| anyhow!("\nsubdomain:{}\n{e}", subdomain.subdomain))?
+        .collect();
 
     if socket_addresses.is_empty() {
         warn!("No socket addresses found for {}", subdomain.subdomain);
@@ -49,9 +45,7 @@ pub async fn scan_port(mut socket_address: SocketAddr, port: u16) -> Port {
     let timeout_limit = Duration::from_secs(3);
     socket_address.set_port(port);
 
-    if let Ok(Ok(_)) =
-        timeout(timeout_limit, TcpStream::connect(&socket_address)).await
-    {
+    if let Ok(Ok(_)) = timeout(timeout_limit, TcpStream::connect(&socket_address)).await {
         Port {
             findings: vec![],
             is_open: true,
@@ -73,8 +67,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_scan_port() {
-        let socket_address =
-            SocketAddr::new(Ipv4Addr::new(127, 0, 0, 1).into(), 1024);
+        let socket_address = SocketAddr::new(Ipv4Addr::new(127, 0, 0, 1).into(), 1024);
         let port = scan_port(socket_address, 80).await;
         assert_eq!(port.port, 80);
         assert!(!port.is_open);

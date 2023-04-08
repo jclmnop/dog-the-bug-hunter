@@ -87,7 +87,7 @@ providers to the super-constellation, on any cloud provider.
 - [x] message handling (sub + pub)
 - [ ] Implement at least 4 different vulnerability scanners, can be fairly simple
   - [ ] elasticsearch unauthenticated access 
-  - [ ] dotenv disclosure
+  - [x] dotenv disclosure
   - [ ] basic SQLi?
   - [ ] a recent CVE
 #### ui-actor
@@ -125,3 +125,4 @@ Probably won't need this one myself anymore, but will still publish it
 - [ ] Test scalability with a separate containerised deployment on Railway and Digital Ocean 
       (extra providers on Digital Ocean, extra actors on Railway)
 - [ ] Encrypt report data in KV storage + store user private keys in vault
+- [ ] customisable wordlists stored in user-specific KV storage

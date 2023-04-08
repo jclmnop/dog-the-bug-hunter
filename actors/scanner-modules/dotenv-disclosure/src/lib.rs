@@ -52,11 +52,7 @@ impl ScannerModule for DotEnvActor {
 // else needs to be done for message handling.
 #[async_trait]
 impl MessageSubscriber for DotEnvActor {
-    async fn handle_message(
-        &self,
-        ctx: &Context,
-        msg: &SubMessage,
-    ) -> RpcResult<()> {
+    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
         self.process_message(ctx, msg).await
     }
 }

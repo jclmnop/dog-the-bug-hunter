@@ -2,8 +2,7 @@ use dtbh_interface::scanner_prelude::*;
 use once_cell::sync::Lazy;
 
 const CALL_ALIAS: &str = "dtb/scanner/<template>";
-static HTTP_CLIENT: Lazy<HttpClientSender<WasmHost>> =
-    Lazy::new(|| HttpClientSender::new());
+static HTTP_CLIENT: Lazy<HttpClientSender<WasmHost>> = Lazy::new(|| HttpClientSender::new());
 
 #[derive(Debug, Default, Actor, HealthResponder)]
 #[services(Actor, MessageSubscriber)]
@@ -30,11 +29,7 @@ impl ScannerModule for TemplateActor {
 //TODO: derive macro?
 #[async_trait]
 impl MessageSubscriber for TemplateActor {
-    async fn handle_message(
-        &self,
-        ctx: &Context,
-        msg: &SubMessage,
-    ) -> RpcResult<()> {
+    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
         self.process_message(ctx, msg).await
     }
 }

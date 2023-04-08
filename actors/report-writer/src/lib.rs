@@ -4,9 +4,7 @@ use dtbh_interface::{GetReportsRequest, GetReportsResult};
 use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
-use wasmcloud_interface_sqldb::{
-    ExecuteResult, QueryResult, SqlDbError, SqlDbSender, Statement,
-};
+use wasmcloud_interface_sqldb::{ExecuteResult, QueryResult, SqlDbError, SqlDbSender, Statement};
 
 const CALL_ALIAS: &str = "dtbh/report-writer";
 const PUB_TOPIC: &str = "dtbh.reports.out";
@@ -17,11 +15,7 @@ struct ReportActor {}
 
 #[async_trait]
 impl ReportWriter for ReportActor {
-    async fn write_report(
-        &self,
-        ctx: &Context,
-        arg: &Report,
-    ) -> RpcResult<WriteReportResult> {
+    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult> {
         todo!()
     }
 
@@ -37,20 +31,15 @@ impl ReportWriter for ReportActor {
 #[async_trait]
 impl MessageSubscriber for ReportActor {
     /// Topic: `dtbh.reports.in`
-    async fn handle_message(
-        &self,
-        ctx: &Context,
-        msg: &SubMessage,
-    ) -> RpcResult<()> {
-        let report: Report = serde_json::from_slice(&msg.body)
-            .map_err(|e| RpcError::Deser(e.to_string()))?;
-        let report_json = serde_json::to_string_pretty(&report)
-            .map_err(|e| RpcError::Ser(e.to_string()))?;
+    async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+        let report: Report =
+            serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
+        let report_json =
+            serde_json::to_string_pretty(&report).map_err(|e| RpcError::Ser(e.to_string()))?;
         let pub_msg = PubMessage {
             subject: PUB_TOPIC.to_string(),
             reply_to: None,
-            body: serde_json::to_vec(&report_json)
-                .map_err(|e| RpcError::Ser(e.to_string()))?,
+            body: serde_json::to_vec(&report_json).map_err(|e| RpcError::Ser(e.to_string()))?,
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
         publisher.publish(ctx, &pub_msg).await
@@ -59,10 +48,7 @@ impl MessageSubscriber for ReportActor {
     }
 }
 
-async fn write_report_to_db(
-    ctx: &Context,
-    report: &Report,
-) -> Result<WriteReportResult> {
+async fn write_report_to_db(ctx: &Context, report: &Report) -> Result<WriteReportResult> {
     todo!()
 }
 

@@ -1,0 +1,30 @@
+[package]
+name = "sqli-detection"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "sqli_detection"
+
+[dependencies]
+anyhow.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+wasmbus-rpc.workspace = true
+wasmcloud-interface-logging.workspace = true
+wasmcloud-interface-numbergen.workspace = true
+wasmcloud-interface-messaging.workspace = true
+wasmcloud-interface-httpclient.workspace = true
+dtbh_interface = { workspace = true, features = ["actor"] }
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+once_cell.workspace = true
+urlencoding = "2.1.2"
+
+[dev-dependencies]
+base64.workspace = true
+webassembly-test.workspace = true
+

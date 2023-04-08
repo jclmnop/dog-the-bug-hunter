@@ -3,19 +3,12 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::time::Duration;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
-use trust_dns_resolver::name_server::{
-    GenericConnection, GenericConnectionProvider, TokioRuntime,
-};
+use trust_dns_resolver::name_server::{GenericConnection, GenericConnectionProvider, TokioRuntime};
 use trust_dns_resolver::AsyncResolver;
 
-pub type Resolver = Arc<
-    AsyncResolver<GenericConnection, GenericConnectionProvider<TokioRuntime>>,
->;
+pub type Resolver = Arc<AsyncResolver<GenericConnection, GenericConnectionProvider<TokioRuntime>>>;
 
-pub async fn resolves(
-    resolver: &Resolver,
-    subdomain: Subdomain,
-) -> Option<Subdomain> {
+pub async fn resolves(resolver: &Resolver, subdomain: Subdomain) -> Option<Subdomain> {
     if resolver
         .lookup_ip(subdomain.subdomain.as_str())
         .await
