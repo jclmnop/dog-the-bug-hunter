@@ -1,6 +1,10 @@
 use serde::Deserialize;
+use wasmbus_rpc::core::LinkDefinition;
+use wasmbus_rpc::error::{RpcError, RpcResult};
+use base64::engine::general_purpose::GeneralPurpose;
+use base64::Engine;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Config {
     /// Host address for the SurrealDB instance. Defaults to `localhost`
     #[serde(default = "default_host")]
@@ -53,3 +57,27 @@ fn default_default_namespace() -> String {
 fn default_default_database() -> String {
     "db".into()
 }
+
+// Mostly stolen from https://github.com/wasmCloud/capability-providers/blob/main/sqldb-postgres/src/config.rs
+/// Load configuration from 'values' field of LinkDefinition.
+/// Support a variety of configuration possibilities:
+///  'config_json' - json string
+///  'config_b64' - base64-encoded json
+pub fn load_config(ld: &LinkDefinition) -> RpcResult<Config> {
+    let b64_engine = GeneralPurpose::new(&base64::alphabet::STANDARD, base64::engine::GeneralPurposeConfig::default());
+    if let Some(cj) = ld.values.get("config_b64") {
+        serde_json::from_slice(
+            &b64_engine.decode(cj)
+                .map_err(|_| RpcError::ProviderInit("invalid config_base64 encoding".into()))?,
+        )
+        .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
+    } else if let Some(cj) = ld.values.get("config_json") {
+        serde_json::from_str(cj.as_str())
+            .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
+    } else {
+        serde_json::from_str("{}") // Should just load all the defaults
+            .map_err(|e| RpcError::ProviderInit(format!("can't deserialise empty config: {e}")))
+    }
+}
+
+//TODO: basic unit tests
