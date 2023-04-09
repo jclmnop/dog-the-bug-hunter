@@ -9,7 +9,8 @@ members = [
 ]
 exclude = [
   "./providers/sleepy",
-  "./interfaces/surrealdb/rust"
+  "./interfaces/surrealdb/rust",
+  "./providers/surrealdb/",
 #  "./providers/endpoint-enumerator",
 ]
 default-members = [
