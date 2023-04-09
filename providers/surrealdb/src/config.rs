@@ -6,7 +6,7 @@ use base64::Engine;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {
-    /// Host address for the SurrealDB instance. Defaults to `localhost`
+    /// Host address for the SurrealDB instance. Defaults to `ws://localhost`
     #[serde(default = "default_host")]
     pub host: String,
     /// Port for the SurrealDB instance. Defaults to `8000`
@@ -27,6 +27,12 @@ pub struct Config {
     /// Default database to be used when one isn't specified. Defaults to `db`
     #[serde(default = "default_default_database")]
     pub default_database: String,
+}
+
+impl Config {
+    fn get_url(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
 }
 
 fn default_host() -> String {
