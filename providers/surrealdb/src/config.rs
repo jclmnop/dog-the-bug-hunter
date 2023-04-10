@@ -7,7 +7,7 @@ use wasmbus_rpc::error::{RpcError, RpcResult};
 // TODO: "global" config?
 
 /// Per-actor config for each link definition
-#[derive(Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, PartialEq, Clone)]
 pub struct LinkConfig {
     //TODO: connection/client type (ws, wss, http, embedded/in-memory, etc)
     /// Host address for the SurrealDB instance. Defaults to `localhost`

@@ -1,7 +1,11 @@
+mod auth;
 mod config;
 mod error;
 mod response;
 
+use crate::auth::sign_in;
+use crate::config::LinkConfig;
+use crate::response::Response;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -12,6 +16,7 @@ use surrealdb::engine::any::Any;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::{Root, Scope, Signin, Signup};
 use surrealdb::sql::Value;
+use surrealdb::Response as SurrealResponse;
 use surrealdb::Surreal;
 use tokio::sync::RwLock;
 use tracing::instrument;
@@ -19,8 +24,7 @@ use wasmbus_rpc::common::Context;
 use wasmbus_rpc::core::{HostData, LinkDefinition};
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
-use wasmcloud_interface_surrealdb::RequestScope;
-use wasmcloud_interface_surrealdb::surrealdb_interface::*;
+use wasmcloud_interface_surrealdb::*;
 
 type SurrealClient = Surreal<Client>;
 
@@ -45,6 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[services(SurrealDb)]
 struct SurrealDbProvider {
     actors: Arc<RwLock<HashMap<String, SurrealClient>>>,
+    configs: Arc<RwLock<HashMap<String, LinkConfig>>>,
 }
 
 impl SurrealDbProvider {
@@ -60,6 +65,15 @@ impl SurrealDbProvider {
             RpcError::InvalidParameter(format!("No client defined for actor: {actor_id}"))
         })?;
         Ok(client.clone())
+    }
+
+    async fn get_config(&self, ctx: &Context) -> RpcResult<LinkConfig> {
+        let actor_id = actor_id(ctx)?;
+        let configs = self.configs.read().await;
+        let config = configs.get(actor_id).ok_or_else(|| {
+            RpcError::InvalidParameter(format!("No client defined for actor: {actor_id}"))
+        })?;
+        Ok(config.clone())
     }
 }
 
@@ -89,8 +103,10 @@ impl ProviderHandler for SurrealDbProvider {
                 RpcError::ProviderInit(format!("Error authenticating Root for SurrealDB: {e}"))
             })?;
 
-        let mut update_map = self.actors.write().await;
-        update_map.insert(ld.actor_id.to_string(), client);
+        let mut actors = self.actors.write().await;
+        actors.insert(ld.actor_id.to_string(), client);
+        let mut configs = self.configs.write().await;
+        configs.insert(ld.actor_id.to_string(), config);
         Ok(true)
     }
 
@@ -122,12 +138,42 @@ impl SurrealDb for SurrealDbProvider {
     }
 
     async fn query(&self, ctx: &Context, req: &QueryRequest) -> RpcResult<QueryResponses> {
-        let client = self.get_client(ctx).await?;
+        let mut client = self.get_client(ctx).await?;
+        let config = self.get_config(ctx).await?;
+        sign_in(&req.scope, &config, &mut client)
+            .await
+            .map_err(|_| RpcError::InvalidParameter("Failed to sign in".into()))?;
         let queries = &req.queries;
-        let bindings = parse_bindings(&req.bindings);
-        let scope = &req.scope;
-        todo!()
+        let bindings = parse_bindings(&req.bindings)
+            .map_err(|e| RpcError::InvalidParameter("Unable to parse bindings".into()))?;
+        Ok(send_queries(&client, &queries, bindings).await)
     }
+}
+
+async fn send_queries(
+    client: &SurrealClient,
+    queries: &Queries,
+    bindings: Vec<Value>,
+) -> QueryResponses {
+    let mut results: Vec<surrealdb::Result<SurrealResponse>> = vec![];
+    let iter = queries.into_iter().zip(bindings.into_iter());
+    for (q, b) in iter {
+        let r = client.query(q).bind(b).await;
+        results.push(r);
+    }
+    results
+        .into_iter()
+        .map(|result| match result {
+            Ok(response) => QueryResponse::from(Response::from(response)),
+            Err(err) => QueryResponse {
+                errors: vec![SurrealDbError {
+                    message: err.to_string(),
+                    name: "QUERY_SEND_ERROR".to_string(),
+                }],
+                response: vec![],
+            },
+        })
+        .collect()
 }
 
 fn parse_bindings(bindings: &Vec<String>) -> surrealdb::Result<Vec<Value>> {
