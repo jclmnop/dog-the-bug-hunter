@@ -1,7 +1,7 @@
+use indexmap::IndexMap;
+use surrealdb::sql::Value;
 use surrealdb::Response as SurrealResponse;
 use surrealdb::Result as SurrealResult;
-use surrealdb::sql::Value;
-use indexmap::IndexMap;
 use wasmcloud_interface_surrealdb::{QueryResponse, SurrealDbError};
 
 pub struct Response(pub IndexMap<usize, SurrealResult<Vec<Value>>>);
@@ -22,7 +22,7 @@ impl From<Response> for SurrealResponse {
 
 impl From<Response> for QueryResponse {
     fn from(response: Response) -> Self {
-       let mut query_response = QueryResponse::default();
+        let mut query_response = QueryResponse::default();
 
         for (k, v) in response.0 {
             if let Ok(values) = v {
@@ -30,22 +30,18 @@ impl From<Response> for QueryResponse {
                     Ok(bytes) => query_response.response.push(bytes),
                     Err(e) => {
                         query_response.response.push(vec![]);
-                        query_response.errors.push(
-                            SurrealDbError {
-                                message: e.to_string(),
-                                name: "serde_json_error".to_string(),
-                            }
-                        );
+                        query_response.errors.push(SurrealDbError {
+                            message: e.to_string(),
+                            name: "serde_json_error".to_string(),
+                        });
                     }
                 }
             } else if let Err(e) = v {
                 query_response.response.push(vec![]);
-                query_response.errors.push(
-                    SurrealDbError {
-                        message: e.to_string(),
-                        name: "query_error".to_string(),
-                    }
-                )
+                query_response.errors.push(SurrealDbError {
+                    message: e.to_string(),
+                    name: "query_error".to_string(),
+                })
             }
         }
 

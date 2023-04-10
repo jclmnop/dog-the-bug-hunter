@@ -1,11 +1,15 @@
+use base64::engine::general_purpose::GeneralPurpose;
+use base64::Engine;
 use serde::Deserialize;
 use wasmbus_rpc::core::LinkDefinition;
 use wasmbus_rpc::error::{RpcError, RpcResult};
-use base64::engine::general_purpose::GeneralPurpose;
-use base64::Engine;
 
+// TODO: "global" config?
+
+/// Per-actor config for each link definition
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {
+    //TODO: connection/client type (ws, wss, http, embedded/in-memory, etc)
     /// Host address for the SurrealDB instance. Defaults to `ws://localhost`
     #[serde(default = "default_host")]
     pub host: String,
@@ -29,10 +33,22 @@ pub struct Config {
     pub default_database: String,
 }
 
+//TODO: connect()
 impl Config {
-    fn get_url(&self) -> String {
+    pub fn get_url(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub enum ClientType {
+    #[default]
+    Ws,
+    Wss,
+    Http,
+    // TODO: probably limit this to one static instance, so all actors using embedded
+    //       will share same db
+    Embedded,
 }
 
 fn default_host() -> String {
@@ -70,10 +86,14 @@ fn default_default_database() -> String {
 ///  'config_json' - json string
 ///  'config_b64' - base64-encoded json
 pub fn load_config(ld: &LinkDefinition) -> RpcResult<Config> {
-    let b64_engine = GeneralPurpose::new(&base64::alphabet::STANDARD, base64::engine::GeneralPurposeConfig::default());
+    let b64_engine = GeneralPurpose::new(
+        &base64::alphabet::STANDARD,
+        base64::engine::GeneralPurposeConfig::default(),
+    );
     if let Some(cj) = ld.values.get("config_b64") {
         serde_json::from_slice(
-            &b64_engine.decode(cj)
+            &b64_engine
+                .decode(cj)
                 .map_err(|_| RpcError::ProviderInit("invalid config_base64 encoding".into()))?,
         )
         .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
