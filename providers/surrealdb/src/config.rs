@@ -55,7 +55,7 @@ impl LinkConfig {
                     .decode(cj)
                     .map_err(|_| RpcError::ProviderInit("invalid config_base64 encoding".into()))?,
             )
-                .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
+            .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
         } else if let Some(cj) = ld.values.get("config_json") {
             serde_json::from_str(cj.as_str())
                 .map_err(|e| RpcError::ProviderInit(format!("invalid json config: {e}")))
@@ -77,7 +77,7 @@ pub enum ProviderType {
     #[serde(rename = "static")]
     Static(LinkConfig),
     #[default]
-    Dynamic
+    Dynamic,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -125,18 +125,21 @@ fn default_default_database() -> String {
 //TODO: basic unit tests
 #[cfg(test)]
 mod tests {
-    use super::{ProviderConfig, ProviderType, ClientType, LinkConfig, Deserialize};
+    use super::{ClientType, Deserialize, LinkConfig, ProviderConfig, ProviderType};
 
     #[test]
     fn test_defaults() {
         let default_str = "{}";
-        let link_conf: LinkConfig = serde_json::from_str(default_str).expect("Failed to deser default link config");
-        let provider_conf: ProviderConfig = serde_json::from_str(default_str).expect("Failed to deser default link config");
+        let link_conf: LinkConfig =
+            serde_json::from_str(default_str).expect("Failed to deser default link config");
+        let provider_conf: ProviderConfig =
+            serde_json::from_str(default_str).expect("Failed to deser default link config");
 
         println!("{}", serde_json::to_string_pretty(&link_conf).unwrap());
         println!("{}", serde_json::to_string_pretty(&provider_conf).unwrap());
 
-        assert_eq!(link_conf,
+        assert_eq!(
+            link_conf,
             LinkConfig {
                 host: "localhost".into(),
                 port: 8000,
@@ -147,7 +150,12 @@ mod tests {
                 default_database: "db".into(),
             }
         );
-        assert_eq!(provider_conf, ProviderConfig{ provider_type: ProviderType::Dynamic });
+        assert_eq!(
+            provider_conf,
+            ProviderConfig {
+                provider_type: ProviderType::Dynamic
+            }
+        );
     }
 }
 

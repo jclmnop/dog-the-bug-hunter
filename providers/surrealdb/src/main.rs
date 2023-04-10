@@ -2,22 +2,25 @@ mod config;
 mod error;
 mod response;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::io::Read;
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::{Root, Scope, Signin, Signup};
+use surrealdb::sql::Value;
 use surrealdb::Surreal;
 use tokio::sync::RwLock;
 use tracing::instrument;
 use wasmbus_rpc::common::Context;
-use wasmbus_rpc::core::{LinkDefinition, HostData};
+use wasmbus_rpc::core::{HostData, LinkDefinition};
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
-use wasmcloud_interface_surrealdb::surrealdb::Scope as RequestScope;
-use wasmcloud_interface_surrealdb::surrealdb::*;
+use wasmcloud_interface_surrealdb::RequestScope;
+use wasmcloud_interface_surrealdb::surrealdb_interface::*;
 
 type SurrealClient = Surreal<Client>;
 
@@ -48,6 +51,15 @@ impl SurrealDbProvider {
     fn init(host_data: HostData) -> Self {
         //TODO: "global" config values
         Self::default()
+    }
+
+    async fn get_client(&self, ctx: &Context) -> RpcResult<SurrealClient> {
+        let actor_id = actor_id(ctx)?;
+        let actors = self.actors.read().await;
+        let client = actors.get(actor_id).ok_or_else(|| {
+            RpcError::InvalidParameter(format!("No client defined for actor: {actor_id}"))
+        })?;
+        Ok(client.clone())
     }
 }
 
@@ -110,8 +122,23 @@ impl SurrealDb for SurrealDbProvider {
     }
 
     async fn query(&self, ctx: &Context, req: &QueryRequest) -> RpcResult<QueryResponses> {
+        let client = self.get_client(ctx).await?;
+        let queries = &req.queries;
+        let bindings = parse_bindings(&req.bindings);
+        let scope = &req.scope;
         todo!()
     }
 }
 
-// async fn get_client(ctx: &Context) ->
+fn parse_bindings(bindings: &Vec<String>) -> surrealdb::Result<Vec<Value>> {
+    let parsed = bindings
+        .iter()
+        .flat_map(|b| Ok::<Value, surrealdb::Error>(surrealdb::sql::json(b)?));
+    Ok(parsed.collect())
+}
+
+fn actor_id(ctx: &Context) -> RpcResult<&String> {
+    ctx.actor
+        .as_ref()
+        .ok_or_else(|| RpcError::InvalidParameter("no actor in request".into()))
+}
