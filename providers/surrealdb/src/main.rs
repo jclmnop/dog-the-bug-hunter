@@ -13,19 +13,22 @@ use surrealdb::Surreal;
 use tokio::sync::RwLock;
 use tracing::instrument;
 use wasmbus_rpc::common::Context;
-use wasmbus_rpc::core::LinkDefinition;
+use wasmbus_rpc::core::{LinkDefinition, HostData};
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
 use wasmcloud_interface_surrealdb::surrealdb::Scope as RequestScope;
 use wasmcloud_interface_surrealdb::surrealdb::*;
+
+type SurrealClient = Surreal<Client>;
 
 // main (via provider_main) initializes the threaded tokio executor,
 // listens to lattice rpcs, handles actor links,
 // and returns only when it receives a shutdown message
 //
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let host_data: HostData = load_host_data()?;
     provider_main(
-        SurrealDbProvider::default(),
+        SurrealDbProvider::init(host_data),
         Some("SurrealDb Provider".to_string()),
     )?;
 
@@ -38,7 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[derive(Default, Clone, Provider)]
 #[services(SurrealDb)]
 struct SurrealDbProvider {
-    actors: Arc<RwLock<HashMap<String, Surreal<Client>>>>,
+    actors: Arc<RwLock<HashMap<String, SurrealClient>>>,
+}
+
+impl SurrealDbProvider {
+    fn init(host_data: HostData) -> Self {
+        //TODO: "global" config values
+        Self::default()
+    }
 }
 
 /// use default implementations of provider message handlers
@@ -51,7 +61,7 @@ impl ProviderHandler for SurrealDbProvider {
     /// If the link is allowed, return true, otherwise return false to deny the link.
     #[instrument(level = "debug", skip(self, ld), fields(actor_id = %ld.actor_id))]
     async fn put_link(&self, ld: &LinkDefinition) -> RpcResult<bool> {
-        let config = config::load_config(ld)?;
+        let config = config::LinkConfig::load_config(ld)?;
         let client = Surreal::new::<Ws>(config.get_url())
             .with_capacity(config.concurrency)
             .await
@@ -103,3 +113,5 @@ impl SurrealDb for SurrealDbProvider {
         todo!()
     }
 }
+
+// async fn get_client(ctx: &Context) ->
