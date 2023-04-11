@@ -19,50 +19,50 @@ pub async fn sign_in(
                 namespace: Some(namespace),
                 scope_name: Some(scope),
             } => {
-                    let credentials = Scope {
-                        namespace,
-                        database,
-                        scope,
-                        params,
-                    };
-                    // client.use_ns(namespace).use_db(database).await?;
-                    client.signin(credentials).await?;
+                let credentials = Scope {
+                    namespace,
+                    database,
+                    scope,
+                    params,
+                };
+                // client.use_ns(namespace).use_db(database).await?;
+                client.signin(credentials).await?;
             }
             RequestScope {
-                auth_params: Some(AuthParams { username, password}),
+                auth_params: Some(AuthParams { username, password }),
                 database: Some(database),
                 namespace: Some(namespace),
                 ..
             } => {
-                    let credentials = Database {
-                        namespace,
-                        database,
-                        username,
-                        password,
-                    };
-                    // client.use_ns(namespace).use_db(database).await?;
-                    client.signin(credentials).await?;
+                let credentials = Database {
+                    namespace,
+                    database,
+                    username,
+                    password,
+                };
+                // client.use_ns(namespace).use_db(database).await?;
+                client.signin(credentials).await?;
             }
             RequestScope {
-                auth_params: Some(AuthParams { username, password}),
+                auth_params: Some(AuthParams { username, password }),
                 namespace: Some(namespace),
                 ..
             } => {
-                    let credentials = Namespace {
-                        namespace,
-                        username,
-                        password,
-                    };
-                    // client.use_ns(namespace).use_db(database).await?;
-                    client.signin(credentials).await?;
+                let credentials = Namespace {
+                    namespace,
+                    username,
+                    password,
+                };
+                // client.use_ns(namespace).use_db(database).await?;
+                client.signin(credentials).await?;
             }
             RequestScope {
-                auth_params: Some(AuthParams { username, password}),
+                auth_params: Some(AuthParams { username, password }),
                 ..
             } => {
-                    let credentials = Root { username, password };
-                    // client.use_ns(namespace).use_db(database).await?;
-                    client.signin(credentials).await?;
+                let credentials = Root { username, password };
+                // client.use_ns(namespace).use_db(database).await?;
+                client.signin(credentials).await?;
             }
             RequestScope {
                 auth_params: None,
@@ -96,17 +96,13 @@ pub fn to_scope(req_scope: &RequestScope) -> Result<Scope<AuthParams>> {
             database: Some(database),
             namespace: Some(namespace),
             scope_name: Some(scope),
-        } => {
-            Ok(
-                Scope {
-                    namespace,
-                    database,
-                    scope,
-                    params: params.to_owned(),
-                }
-            )
-        }
-        _ => Err(anyhow!("Invalid user scope."))
+        } => Ok(Scope {
+            namespace,
+            database,
+            scope,
+            params: params.to_owned(),
+        }),
+        _ => Err(anyhow!("Invalid user scope.")),
     }
 }
 
