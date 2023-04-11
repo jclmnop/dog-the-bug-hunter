@@ -29,7 +29,8 @@ async fn run_all() {
         test_single_query,
         test_signup,
         test_signin,
-        test_auth
+        test_auth,
+        test_scoped_query,
     );
     print_test_results(&res);
 
@@ -301,6 +302,209 @@ async fn test_auth(_opts: &TestOptions) -> RpcResult<()> {
 
     check!(valid_auth.success)?;
     check!(!invalid_auth.success)?;
+
+    Ok(())
+}
+
+async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
+    let prov = test_provider().await;
+    let ctx = Context::default();
+    let client = SurrealDbSender::via(prov);
+
+    let sql = r#"
+        REMOVE TABLE user_query;
+        REMOVE TABLE user_wrong;
+        DEFINE SCOPE test_query_scope
+        SESSION 14d
+        SIGNUP (
+          CREATE type::thing("user_query", string::lowercase(string::trim($username)))
+          SET pass = crypto::argon2::generate($password)
+        )
+        SIGNIN (
+          SELECT * FROM type::thing("user_query", string::lowercase(string::trim($username)))
+          WHERE crypto::argon2::compare(pass, $password)
+        );
+
+        DEFINE TABLE scoped_table SCHEMALESS
+        PERMISSIONS
+            FOR select, update, delete WHERE user = $token.ID AND $scope = "test_query_scope"
+            FOR create WHERE $scope = "test_query_scope";
+
+        DEFINE SCOPE wrong_scope
+        SESSION 14d
+        SIGNUP (
+          CREATE type::thing("user_wrong", string::lowercase(string::trim($username)))
+          SET pass = crypto::argon2::generate($password)
+        )
+        SIGNIN (
+          SELECT * FROM type::thing("user_wrong", string::lowercase(string::trim($username)))
+          WHERE crypto::argon2::compare(pass, $password)
+        );
+    "#
+        .to_string();
+
+    let res = client
+        .query(
+            &ctx,
+            &QueryRequest {
+                bindings: vec!["{}".to_string()],
+                queries: vec![sql],
+                scope: None,
+            },
+        )
+        .await?;
+
+    for res in res {
+        for err in res.errors {
+            warn!("scoped_query: {err:#?}");
+        }
+        for data in res.response {
+            let s = String::from_utf8(data).unwrap();
+            info!("scoped_query: {s}");
+        }
+    }
+
+    let scope = RequestScope {
+        database: Some("db".to_string()),
+        namespace: Some("ns".to_string()),
+        scope_name: Some("test_query_scope".to_string()),
+        auth_params: Some(AuthParams {
+            username: "test_query_user".to_string(),
+            password: "test_query_pass".to_string(),
+        }),
+        jwt: None,
+    };
+    let signup_resp = client.sign_up(&ctx, &scope).await?;
+    check!(signup_resp.success)?;
+
+    let jwt = signup_resp.jwt.unwrap();
+
+    let sql =
+        r#"CREATE scoped_table SET user = $token.ID, field1 = "poop" "#
+            .to_string();
+
+    // Wrong scope, should fail
+    let wrong_scope = RequestScope {
+        database: Some("db".to_string()),
+        namespace: Some("ns".to_string()),
+        scope_name: Some("wrong_scope".to_string()),
+        auth_params: Some(AuthParams {
+            username: "test_query_user".to_string(),
+            password: "test_query_pass".to_string(),
+        }),
+        jwt: None,
+    };
+    let req = QueryRequest {
+        bindings: vec!["{}".to_string()],
+        queries: vec![sql.clone()],
+        scope: Some(wrong_scope.clone()),
+    };
+
+    // Not signed up, should return error
+    let result = client.query(&ctx, &req).await;
+    check!(result.is_err())?;
+
+    // Sign user up to wrong scope
+    let sign_up_wrong_scope = client.sign_up(&ctx, &wrong_scope).await?;
+    let jwt_wrong_scope = sign_up_wrong_scope.jwt.unwrap();
+
+    let req = QueryRequest {
+        bindings: vec!["{}".to_string()],
+        queries: vec![sql.clone()],
+        scope: Some(RequestScope { jwt: Some(jwt_wrong_scope), ..Default::default()}),
+    };
+
+    let results = client.query(&ctx, &req).await?;
+
+    for result in results {
+        info!("scope-query: {:#?}", result.errors);
+        for response in result.response {
+            if !response.is_empty() {
+                check_eq!("[]".to_string(), String::from_utf8(response.clone()).unwrap())?;
+            }
+        }
+        // check!(!result.errors.is_empty())?;
+    }
+
+    // Correct scope (using jwt), should succeed
+    let req = QueryRequest {
+        bindings: vec!["{}".to_string()],
+        queries: vec![sql],
+        scope: Some(RequestScope {
+            jwt: Some(jwt.clone()),
+            ..Default::default()
+        }),
+    };
+    let results = client.query(&ctx, &req).await?;
+
+    for result in results {
+        info!("scope-query: {:#?}", result.errors);
+        check!(result.errors.is_empty())?;
+
+        for response in result.response {
+            let s = String::from_utf8(response).unwrap();
+        }
+    }
+
+
+
+    // Sign up new user in same scope to ensure they can't access
+    let scope = RequestScope {
+        database: Some("db".to_string()),
+        namespace: Some("ns".to_string()),
+        scope_name: Some("test_query_scope".to_string()),
+        auth_params: Some(AuthParams {
+            username: "new_user".to_string(),
+            password: "password123".to_string(),
+        }),
+        jwt: None,
+    };
+    let signup_resp = client.sign_up(&ctx, &scope).await?;
+    check!(signup_resp.success)?;
+    let other_jwt = signup_resp.jwt.unwrap();
+
+    let sql = r#"SELECT * FROM scoped_table WHERE field1 = "poop""#.to_string();
+    let req = QueryRequest {
+        bindings: vec!["{}".to_string()],
+        queries: vec![sql.clone()],
+        scope: Some(RequestScope{
+            jwt: Some(other_jwt),
+            ..Default::default()
+        }),
+    };
+    let results = client.query(&ctx, &req).await?;
+
+    for result in results {
+        info!("scope-query: {:#?}", result.errors);
+        for response in result.response {
+            if !response.is_empty() {
+                let s = String::from_utf8(response.clone()).unwrap();
+                check_eq!("[]".to_string(), s)?;
+            }
+        }
+    }
+
+    // Correct scope (using jwt), should succeed
+    let req = QueryRequest {
+        bindings: vec!["{}".to_string()],
+        queries: vec![sql],
+        scope: Some(RequestScope {
+            jwt: Some(jwt),
+            ..Default::default()
+        }),
+    };
+    let results = client.query(&ctx, &req).await?;
+
+    for result in results {
+        info!("scope-query: {:#?}", result.errors);
+        check!(result.errors.is_empty())?;
+
+        for response in result.response {
+            let s = String::from_utf8(response).unwrap();
+            check!(!(s == "[]".to_string()))?;
+            warn!("scope-query: {s}");
+        }
+    }
 
     Ok(())
 }

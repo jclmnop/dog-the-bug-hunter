@@ -6,7 +6,7 @@
   - [x] signin
   - [x] signup
   - [x] jwt auth
-  - [ ] scoped query
+  - [x] scoped query
   - [ ] transaction
   - [x] docker
 - [x] basic interface
@@ -22,7 +22,7 @@
           we can just return a serialised version of the actual `Response` struct to 
           the actor and it can be deserialised while retaining all the original surrealdb 
           types etc
-        - cbor enc/decoding would be even better
+        - cbor enc/decoding would be even better (or maybe bung?)
 - [x] basic per-actor config
 - [x] basic operations
   - [x] query
@@ -38,3 +38,5 @@
   - [ ] select
   - [ ] update
   - [ ] etc
+- [ ] [bung](https://docs.rs/bung/latest/bung/index.html) encdec
+- [ ] TLS
