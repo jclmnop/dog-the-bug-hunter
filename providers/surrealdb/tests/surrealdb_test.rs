@@ -1,8 +1,11 @@
+mod utils;
+
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use serde::{Deserialize, Serialize};
 use tracing::info;
+use tracing::debug;
 use wasmbus_rpc::error::RpcResult;
 use wasmbus_rpc::provider::prelude::*;
 use wasmbus_rpc::Timestamp;
@@ -15,11 +18,14 @@ use wasmcloud_test_util::{
 };
 #[allow(unused_imports)]
 use wasmcloud_test_util::{run_selected, run_selected_spawn};
+use utils::*;
 
 //TODO: docker container with surrealdb instance
 
 #[tokio::test]
 async fn run_all() {
+    start_logger();
+    let _guard = start_docker();
     let opts = TestOptions::default();
     let res = run_selected_spawn!(&opts, test_health_check, test_single_query);
     print_test_results(&res);
@@ -61,13 +67,13 @@ async fn test_single_query(_opt: &TestOptions) -> RpcResult<()> {
     let result = results.first().unwrap().response.first().unwrap();
 
     let s = String::from_utf8(result.clone()).unwrap();
-    println!("{s}");
+    debug!("{s}");
 
     let deser_result: Vec<TestStruct> = serde_json::from_slice(result).unwrap();
 
     let deser_result = deser_result.first().unwrap();
 
-    assert_eq!(&test_struct, deser_result);
+    check_eq!(&test_struct, deser_result)?;
 
     Ok(())
 }

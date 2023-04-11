@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    command: start --log trace --user root --pass root memory
+    ports:
+      - "8000:8000"
+    container_name: surrealdb
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+    container_name: nats-server

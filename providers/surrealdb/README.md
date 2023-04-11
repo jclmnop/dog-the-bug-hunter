@@ -2,6 +2,11 @@
 ## Essential
 - [ ] unit tests for serde etc
 - [ ] integration tests
+  - [x] single query schemaless
+  - [ ] single query schemaful
+  - [ ] scoped query
+  - [ ] transaction
+  - [ ] docker
 - [x] basic interface
 - [x] figure out a way of se/deserialising queries, bindings and responses
     - the way i'm currently handling serde of responses isn't ideal but i don't 
@@ -18,7 +23,7 @@
         - cbor enc/decoding would be even better
 - [x] basic per-actor config
 - [ ] basic operations
-  - [ ] query
+  - [x] query
   - [ ] signup
   - [ ] signin/auth?
 
