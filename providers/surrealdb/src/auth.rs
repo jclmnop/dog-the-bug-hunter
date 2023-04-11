@@ -14,10 +14,18 @@ pub async fn sign_in(
     if let Some(request_scope) = request_scope {
         match request_scope {
             RequestScope {
+                jwt: Some(jwt),
+                ..
+            } => {
+                let jwt = jwt.trim_matches('"');
+                client.authenticate(jwt).await?;
+            }
+            RequestScope {
                 auth_params: Some(params),
                 database: Some(database),
                 namespace: Some(namespace),
                 scope_name: Some(scope),
+                ..
             } => {
                 let credentials = Scope {
                     namespace,
@@ -96,6 +104,7 @@ pub fn to_scope(req_scope: &RequestScope) -> Result<Scope<AuthParams>> {
             database: Some(database),
             namespace: Some(namespace),
             scope_name: Some(scope),
+            ..
         } => Ok(Scope {
             namespace,
             database,

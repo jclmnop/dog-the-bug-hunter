@@ -3,10 +3,12 @@
 - [ ] unit tests for serde etc
 - [ ] integration tests
   - [x] single query schemaless
-  - [ ] single query schemaful
+  - [x] signin
+  - [x] signup
+  - [x] jwt auth
   - [ ] scoped query
   - [ ] transaction
-  - [ ] docker
+  - [x] docker
 - [x] basic interface
 - [x] figure out a way of se/deserialising queries, bindings and responses
     - the way i'm currently handling serde of responses isn't ideal but i don't 
@@ -22,10 +24,10 @@
           types etc
         - cbor enc/decoding would be even better
 - [x] basic per-actor config
-- [ ] basic operations
+- [x] basic operations
   - [x] query
-  - [ ] signup
-  - [ ] signin/auth?
+  - [x] signup
+  - [x] signin/auth?
 
 ## Nice to have
 - [ ] basic global config

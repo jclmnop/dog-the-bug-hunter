@@ -133,6 +133,7 @@ async fn test_signup(_opt: &TestOptions) -> RpcResult<()> {
             username: "test_username".to_string(),
             password: "test_password".to_string(),
         }),
+        jwt: None,
     };
 
     let signup_resp = client.sign_up(&ctx, &scope).await?;
@@ -199,6 +200,7 @@ async fn test_signin(_opts: &TestOptions) -> RpcResult<()> {
             username: "test_signin_user".to_string(),
             password: "test_signin_pass".to_string(),
         }),
+        jwt: None,
     };
     let signup_resp = client.sign_up(&ctx, &scope).await?;
     check!(signup_resp.success)?;
@@ -222,6 +224,7 @@ async fn test_signin(_opts: &TestOptions) -> RpcResult<()> {
             username: "test_signin_user".to_string(),
             password: "invalid_pass".to_string(),
         }),
+        jwt: None,
     };
 
     let signin_resp = client.sign_in(&ctx, &invalid_signin).await?;
@@ -279,6 +282,7 @@ async fn test_auth(_opts: &TestOptions) -> RpcResult<()> {
             username: "test_jwt_user".to_string(),
             password: "test_jwt_pass".to_string(),
         }),
+        jwt: None,
     };
     let signup_resp = client.sign_up(&ctx, &scope).await?;
     check!(signup_resp.success)?;
