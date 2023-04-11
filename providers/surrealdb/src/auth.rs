@@ -127,6 +127,9 @@ pub async fn sign_in(
     } else {
         let root = root_credentials(conf);
         client.signin(root).await?;
+        let ns = &conf.default_namespace;
+        let db = &conf.default_database;
+        client.use_ns(ns).use_db(db).await?;
     }
     Ok(())
 }

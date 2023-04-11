@@ -10,7 +10,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::io::Read;
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::engine::remote::ws::{Client, Ws};
@@ -25,6 +24,8 @@ use wasmbus_rpc::core::{HostData, LinkDefinition};
 use wasmbus_rpc::error::{RpcError, RpcResult};
 use wasmbus_rpc::provider::prelude::*;
 use wasmcloud_interface_surrealdb::*;
+
+//TODO: tracing
 
 type SurrealClient = Surreal<Client>;
 
