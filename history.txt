@@ -1,0 +1,9 @@
+#V2
+SELECT * FROM test1
+SELECT * FROM test2
+select * from user
+SELECT * FROM test2
+SELECT * FROM user
+SELECT * FROM users
+SELECT * FROM scoped_table
+SELECT * FROM scoped_table WHERE field1 = "poop"

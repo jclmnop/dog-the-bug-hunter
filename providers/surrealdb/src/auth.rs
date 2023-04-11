@@ -1,7 +1,6 @@
 use crate::config::LinkConfig;
 use crate::SurrealClient;
 use anyhow::{anyhow, Result};
-use serde::Serialize;
 use surrealdb::opt::auth::*;
 use wasmcloud_interface_surrealdb::{AuthParams, RequestScope};
 
@@ -13,10 +12,7 @@ pub async fn sign_in(
 ) -> Result<()> {
     if let Some(request_scope) = request_scope {
         match request_scope {
-            RequestScope {
-                jwt: Some(jwt),
-                ..
-            } => {
+            RequestScope { jwt: Some(jwt), .. } => {
                 let jwt = jwt.trim_matches('"');
                 client.authenticate(jwt).await?;
             }

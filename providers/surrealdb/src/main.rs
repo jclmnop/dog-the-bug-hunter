@@ -11,11 +11,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use surrealdb::dbs::Session;
-use surrealdb::engine::any::Any;
 use surrealdb::engine::remote::ws::{Client, Ws};
-use surrealdb::kvs::Datastore;
-use surrealdb::opt::auth::{Root, Scope, Signin, Signup};
+use surrealdb::opt::auth::Root;
 use surrealdb::sql::Value;
 use surrealdb::Response as SurrealResponse;
 use surrealdb::Surreal;
@@ -56,7 +53,7 @@ struct SurrealDbProvider {
 }
 
 impl SurrealDbProvider {
-    fn init(host_data: HostData) -> Self {
+    fn init(_host_data: HostData) -> Self {
         //TODO: "global" config values
         Self::default()
     }
@@ -144,8 +141,8 @@ impl SurrealDb for SurrealDbProvider {
             .map_err(|_| RpcError::InvalidParameter("Failed to sign in".into()))?;
         let queries = &req.queries;
         let bindings = parse_bindings(&req.bindings)
-            .map_err(|e| RpcError::InvalidParameter("Unable to parse bindings".into()))?;
-        Ok(send_queries(&client, &queries, bindings).await)
+            .map_err(|e| RpcError::InvalidParameter(format!("Unable to parse bindings: {e}")))?;
+        Ok(send_queries(&client, queries, bindings).await)
     }
 
     async fn sign_up(&self, ctx: &Context, req: &RequestScope) -> RpcResult<SignUpResponse> {
@@ -237,7 +234,7 @@ async fn send_queries(
     bindings: Vec<Value>,
 ) -> QueryResponses {
     let mut results: Vec<surrealdb::Result<SurrealResponse>> = vec![];
-    let iter = queries.into_iter().zip(bindings.into_iter());
+    let iter = queries.iter().zip(bindings.into_iter());
     for (q, b) in iter {
         let r = client.query(q).bind(b).await;
         results.push(r);
@@ -257,7 +254,7 @@ async fn send_queries(
         .collect()
 }
 
-fn parse_bindings(bindings: &Vec<String>) -> surrealdb::Result<Vec<Value>> {
+fn parse_bindings(bindings: &[String]) -> surrealdb::Result<Vec<Value>> {
     let parsed = bindings
         .iter()
         .flat_map(|b| Ok::<Value, surrealdb::Error>(surrealdb::sql::json(b)?));

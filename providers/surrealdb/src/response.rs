@@ -24,7 +24,7 @@ impl From<Response> for QueryResponse {
     fn from(response: Response) -> Self {
         let mut query_response = QueryResponse::default();
 
-        for (k, v) in response.0 {
+        for (_k, v) in response.0 {
             if let Ok(values) = v {
                 match serde_json::to_vec(&values) {
                     Ok(bytes) => query_response.response.push(bytes),

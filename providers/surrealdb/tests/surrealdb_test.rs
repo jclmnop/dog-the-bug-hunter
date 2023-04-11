@@ -341,7 +341,7 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
           WHERE crypto::argon2::compare(pass, $password)
         );
     "#
-        .to_string();
+    .to_string();
 
     let res = client
         .query(
@@ -379,9 +379,7 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
 
     let jwt = signup_resp.jwt.unwrap();
 
-    let sql =
-        r#"CREATE scoped_table SET user = $token.ID, field1 = "poop" "#
-            .to_string();
+    let sql = r#"CREATE scoped_table SET user = $token.ID, field1 = "poop" "#.to_string();
 
     // Wrong scope, should fail
     let wrong_scope = RequestScope {
@@ -411,7 +409,10 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
     let req = QueryRequest {
         bindings: vec!["{}".to_string()],
         queries: vec![sql.clone()],
-        scope: Some(RequestScope { jwt: Some(jwt_wrong_scope), ..Default::default()}),
+        scope: Some(RequestScope {
+            jwt: Some(jwt_wrong_scope),
+            ..Default::default()
+        }),
     };
 
     let results = client.query(&ctx, &req).await?;
@@ -420,7 +421,10 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
         info!("scope-query: {:#?}", result.errors);
         for response in result.response {
             if !response.is_empty() {
-                check_eq!("[]".to_string(), String::from_utf8(response.clone()).unwrap())?;
+                check_eq!(
+                    "[]".to_string(),
+                    String::from_utf8(response.clone()).unwrap()
+                )?;
             }
         }
         // check!(!result.errors.is_empty())?;
@@ -446,8 +450,6 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
         }
     }
 
-
-
     // Sign up new user in same scope to ensure they can't access
     let scope = RequestScope {
         database: Some("db".to_string()),
@@ -467,7 +469,7 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
     let req = QueryRequest {
         bindings: vec!["{}".to_string()],
         queries: vec![sql.clone()],
-        scope: Some(RequestScope{
+        scope: Some(RequestScope {
             jwt: Some(other_jwt),
             ..Default::default()
         }),
