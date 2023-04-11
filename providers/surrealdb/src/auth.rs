@@ -14,50 +14,26 @@ pub async fn sign_in(
     if let Some(request_scope) = request_scope {
         match request_scope {
             RequestScope {
-                auth_params: Some(auth_params),
+                auth_params: Some(params),
                 database: Some(database),
                 namespace: Some(namespace),
                 scope_name: Some(scope),
             } => {
-                if let AuthParams { jwt: Some(jwt), .. } = auth_params {
                     let credentials = Scope {
                         namespace,
                         database,
                         scope,
-                        params: Jwt::from(jwt),
+                        params,
                     };
                     // client.use_ns(namespace).use_db(database).await?;
                     client.signin(credentials).await?;
-                } else if let AuthParams {
-                    username: Some(username),
-                    password: Some(password),
-                    ..
-                } = auth_params
-                {
-                    let credentials = Scope {
-                        namespace,
-                        database,
-                        scope,
-                        params: UserPass { username, password },
-                    };
-                    // client.use_ns(namespace).use_db(database).await?;
-                    client.signin(credentials).await?;
-                } else {
-                    return Err(anyhow!("Invalid combination of username, password and JWT"));
-                }
             }
             RequestScope {
-                auth_params: Some(auth_params),
+                auth_params: Some(AuthParams { username, password}),
                 database: Some(database),
                 namespace: Some(namespace),
                 ..
             } => {
-                if let AuthParams {
-                    username: Some(username),
-                    password: Some(password),
-                    ..
-                } = auth_params
-                {
                     let credentials = Database {
                         namespace,
                         database,
@@ -66,21 +42,12 @@ pub async fn sign_in(
                     };
                     // client.use_ns(namespace).use_db(database).await?;
                     client.signin(credentials).await?;
-                } else {
-                    return Err(anyhow!("Invalid combination of username, password and JWT"));
-                }
             }
             RequestScope {
-                auth_params: Some(auth_params),
+                auth_params: Some(AuthParams { username, password}),
                 namespace: Some(namespace),
                 ..
             } => {
-                if let AuthParams {
-                    username: Some(username),
-                    password: Some(password),
-                    ..
-                } = auth_params
-                {
                     let credentials = Namespace {
                         namespace,
                         username,
@@ -88,26 +55,14 @@ pub async fn sign_in(
                     };
                     // client.use_ns(namespace).use_db(database).await?;
                     client.signin(credentials).await?;
-                } else {
-                    return Err(anyhow!("Invalid combination of username, password and JWT"));
-                }
             }
             RequestScope {
-                auth_params: Some(auth_params),
+                auth_params: Some(AuthParams { username, password}),
                 ..
             } => {
-                if let AuthParams {
-                    username: Some(username),
-                    password: Some(password),
-                    ..
-                } = auth_params
-                {
                     let credentials = Root { username, password };
                     // client.use_ns(namespace).use_db(database).await?;
                     client.signin(credentials).await?;
-                } else {
-                    return Err(anyhow!("Invalid combination of username, password and JWT"));
-                }
             }
             RequestScope {
                 auth_params: None,
@@ -134,6 +89,27 @@ pub async fn sign_in(
     Ok(())
 }
 
+pub fn to_scope(req_scope: &RequestScope) -> Result<Scope<AuthParams>> {
+    match req_scope {
+        RequestScope {
+            auth_params: Some(params),
+            database: Some(database),
+            namespace: Some(namespace),
+            scope_name: Some(scope),
+        } => {
+            Ok(
+                Scope {
+                    namespace,
+                    database,
+                    scope,
+                    params: params.to_owned(),
+                }
+            )
+        }
+        _ => Err(anyhow!("Invalid user scope."))
+    }
+}
+
 fn root_credentials(conf: &LinkConfig) -> Root {
     let root_user = &conf.user;
     let root_password = &conf.pass;
@@ -143,10 +119,10 @@ fn root_credentials(conf: &LinkConfig) -> Root {
     }
 }
 
-#[derive(Serialize)]
-struct UserPass<'a> {
-    #[serde(rename = "user")]
-    username: &'a String,
-    #[serde(rename = "pass")]
-    password: &'a String,
-}
+// #[derive(Serialize)]
+// struct UserPass<'a> {
+//     #[serde(rename = "user")]
+//     username: &'a String,
+//     #[serde(rename = "pass")]
+//     password: &'a String,
+// }

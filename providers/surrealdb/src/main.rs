@@ -3,7 +3,7 @@ mod config;
 mod error;
 mod response;
 
-use crate::auth::sign_in;
+use crate::auth::{sign_in, to_scope};
 use crate::config::LinkConfig;
 use crate::response::Response;
 use anyhow::Result;
@@ -15,6 +15,8 @@ use surrealdb::engine::any::Any;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::{Root, Scope, Signin, Signup};
 use surrealdb::sql::Value;
+use surrealdb::kvs::Datastore;
+use surrealdb::dbs::Session;
 use surrealdb::Response as SurrealResponse;
 use surrealdb::Surreal;
 use tokio::sync::RwLock;
@@ -134,10 +136,6 @@ impl ProviderHandler for SurrealDbProvider {
 
 #[async_trait]
 impl SurrealDb for SurrealDbProvider {
-    async fn sign_up(&self, ctx: &Context, req: &RequestScope) -> RpcResult<SignUpResponse> {
-        todo!()
-    }
-
     async fn query(&self, ctx: &Context, req: &QueryRequest) -> RpcResult<QueryResponses> {
         let mut client = self.get_client(ctx).await?;
         let config = self.get_config(ctx).await?;
@@ -148,6 +146,49 @@ impl SurrealDb for SurrealDbProvider {
         let bindings = parse_bindings(&req.bindings)
             .map_err(|e| RpcError::InvalidParameter("Unable to parse bindings".into()))?;
         Ok(send_queries(&client, &queries, bindings).await)
+    }
+
+    async fn sign_up(&self, ctx: &Context, req: &RequestScope) -> RpcResult<SignUpResponse> {
+        let client = self.get_client(ctx).await?;
+        let scope = to_scope(req)
+            .map_err(|e| RpcError::InvalidParameter(e.to_string()))?;
+        Ok(
+            match client.signup(scope).await {
+                Ok(token) => {
+                    match serde_json::to_string(&token) {
+                        Ok(token) => SignUpResponse {
+                            error: None,
+                            jwt: Some(token),
+                            success: true,
+                        },
+                        Err(e) => SignUpResponse {
+                            error: Some(SurrealDbError {
+                                message: e.to_string(),
+                                name: "JWT_SER_ERROR".to_string(),
+                            }),
+                            jwt: None,
+                            success: false,
+                        },
+                    }
+                }
+                Err(e) => SignUpResponse {
+                    error: Some(SurrealDbError {
+                        message: e.to_string(),
+                        name: "SIGNUP_ERROR".to_string(),
+                    }),
+                    jwt: None,
+                    success: false,
+                },
+            }
+        )
+    }
+
+    async fn sign_in(&self, ctx: &Context, arg: &RequestScope) -> RpcResult<SignInResponse> {
+        todo!()
+    }
+
+    async fn authenticate<TS: ToString + ?Sized + Sync>(&self, ctx: &Context, jwt: &TS) -> RpcResult<AuthenticateResponse> {
+        todo!()
     }
 }
 
