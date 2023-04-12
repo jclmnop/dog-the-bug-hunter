@@ -57,17 +57,18 @@ impl MessageSubscriber for ReportActor {
 }
 
 const SQL_CREATE_REPORT: &str = r#"
-    BEGIN TRANSACTION;
+    BEGIN;
     LET $report_id = fn::report_id($auth.id, $timestamp, $target);
     CREATE $report_id CONTENT {
         user: $auth.id,
         timestamp: <datetime> $timestamp,
         subdomains: []
     };
+
 "#;
 
 const SQL_CREATE_SUBDOMAIN: &str = r#"
-    LET $report_id = fn::report_id($auth.id, $timestamp, $target);
+    LET $subdomain = $subdomains[<i>];
     CREATE subdomain CONTENT {
         subdomain: $subdomain.subdomain,
         report = $report_id,
@@ -79,13 +80,11 @@ const SQL_CREATE_SUBDOMAIN: &str = r#"
     UPDATE $report_id MERGE {
         subdomains: array::append($report_id.subdomains, $subdomain_id)
     };
+
 "#;
 
 const SQL_CREATE_PORT: &str = r#"
-    LET $report_id = fn::report_id($auth.id, $timestamp, $target);
-    LET $subdomain_id =
-        (SELECT id FROM subdomain
-        WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+    LET $port = $subdomain.open_ports[<j>];
     CREATE port CONTENT {
         subdomain: $subdomain_id,
         port: $port.port,
@@ -96,47 +95,59 @@ const SQL_CREATE_PORT: &str = r#"
     UPDATE $subdomain_id MERGE {
         open_ports: array::append($subdomain_id.open_ports, $port_id)
     };
+
 "#;
 
-const SQL_COMMIT: &str = r#"COMMIT TRANSACTION;"#;
+const SQL_ADD_PORTS_TO_SUBDOMAIN: &str = r#"
+    LET $port_ids =
+        (SELECT id FROM port
+        WHERE subdomain = $subdomain_id).id;
+    UPDATE $subdomain_id MERGE {
+        open_ports: $port_ids
+    };
+
+"#;
+
+const SQL_ADD_SUBDOMAINS_TO_REPORT: &str = r#"
+    LET $subdomain_ids =
+        (SELECT id FROM subdomain
+        WHERE report = $report_id).id;
+    UPDATE $report_id MERGE {
+        subdomains: $subdomain_ids:
+    };
+
+"#;
+
+const SQL_COMMIT: &str = r#"COMMIT;"#;
+
 async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
-    let mut queries: Queries = vec![];
-    let mut bindings: Bindings = vec![];
+    let mut query_string = String::new();
     let scope = RequestScope { jwt: Some(req.jwt.clone()), ..Default::default() };
-    queries.push(SQL_CREATE_REPORT.to_owned());
-    bindings.push(
+
+    // Build the query as one string so it can be executed as a transaction
+    query_string.extend(SQL_CREATE_REPORT.chars());
+    for (i, subdomain) in req.report.subdomains.iter().enumerate() {
+        let sql_create_subdomain = SQL_CREATE_SUBDOMAIN.replace("<i>", &i.to_string());
+        query_string.extend(sql_create_subdomain.chars());
+        for (j, port) in subdomain.open_ports.iter().enumerate() {
+            let sql_create_port = SQL_CREATE_PORT.replace("<j>", &j.to_string());
+            query_string.extend(sql_create_port.chars());
+        }
+        query_string.extend(SQL_ADD_PORTS_TO_SUBDOMAIN.chars());
+    }
+    query_string.extend(SQL_ADD_SUBDOMAINS_TO_REPORT.chars());
+    //TODO: setup events
+    query_string.extend(SQL_COMMIT.chars());
+
+    let bindings = vec![
         json!({
             "timestamp": req.report.timestamp.as_nanos(),
-            "target": req.report.target
+            "target": req.report.target,
+            "subdomains": req.report.subdomains
         }).to_string()
-    );
-
-    for subdomain in &req.report.subdomains {
-        queries.push(SQL_CREATE_SUBDOMAIN.to_owned());
-        bindings.push(
-            json!({
-                "timestamp": req.report.timestamp.as_nanos(),
-                "target": req.report.target,
-                "subdomain": subdomain
-            }).to_string()
-        );
-
-        for port in &subdomain.open_ports {
-            queries.push(SQL_CREATE_PORT.to_owned());
-            bindings.push(
-                json!({
-                    "timestamp": req.report.timestamp.as_nanos(),
-                    "target": req.report.target,
-                    "subdomain": subdomain,
-                    "port": port
-                }).to_string()
-            );
-        }
-    }
-
-    queries.push(SQL_COMMIT.to_string());
-    bindings.push("{}".to_string());
+    ];
+    let queries = vec![query_string];
 
     let results = surreal_client.query(ctx, &QueryRequest {
         bindings,
@@ -172,3 +183,95 @@ async fn update_report(
 
     todo!()
 }
+
+
+
+
+// async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
+//     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
+//     let mut queries: Queries = vec![];
+//     let mut bindings: Bindings = vec![];
+//     let scope = RequestScope { jwt: Some(req.jwt.clone()), ..Default::default() };
+//     queries.push(SQL_CREATE_REPORT.to_owned());
+//     bindings.push(
+//         json!({
+//             "timestamp": req.report.timestamp.as_nanos(),
+//             "target": req.report.target
+//         }).to_string()
+//     );
+//
+//     for subdomain in &req.report.subdomains {
+//         queries.push(SQL_CREATE_SUBDOMAIN.to_owned());
+//         bindings.push(
+//             json!({
+//                 "timestamp": req.report.timestamp.as_nanos(),
+//                 "target": req.report.target,
+//                 "subdomain": subdomain
+//             }).to_string()
+//         );
+//
+//         for port in &subdomain.open_ports {
+//             queries.push(SQL_CREATE_PORT.to_owned());
+//             bindings.push(
+//                 json!({
+//                     "timestamp": req.report.timestamp.as_nanos(),
+//                     "target": req.report.target,
+//                     "subdomain": subdomain,
+//                     "port": port
+//                 }).to_string()
+//             );
+//         }
+//     }
+//
+//     queries.push(SQL_COMMIT.to_string());
+//     bindings.push("{}".to_string());
+//
+//     let results = surreal_client.query(ctx, &QueryRequest {
+//         bindings,
+//         queries,
+//         scope: Some(scope),
+//     }).await?;
+//
+//     if results.iter().any(|r| !r.errors.is_empty()) {
+//         Ok(WriteReportResult {
+//             message: Some("Failed to write all to database".to_string()),
+//             success: false,
+//         })
+//     } else {
+//         Ok(WriteReportResult {
+//             message: None,
+//             success: true,
+//         })
+//     }
+// }
+// const SQL_CREATE_SUBDOMAIN: &str = r#"
+//     LET $report_id = fn::report_id($auth.id, $timestamp, $target);
+//     CREATE subdomain CONTENT {
+//         subdomain: $subdomain.subdomain,
+//         report = $report_id,
+//         open_ports = []
+//     };
+//     LET $subdomain_id =
+//         (SELECT id FROM subdomain
+//         WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+//     UPDATE $report_id MERGE {
+//         subdomains: array::append($report_id.subdomains, $subdomain_id)
+//     };
+// "#;
+//
+// const SQL_CREATE_PORT: &str = r#"
+//     LET $report_id = fn::report_id($auth.id, $timestamp, $target);
+//     LET $subdomain_id =
+//         (SELECT id FROM subdomain
+//         WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+//     CREATE port CONTENT {
+//         subdomain: $subdomain_id,
+//         port: $port.port,
+//     };
+//     LET $port_id =
+//         (SELECT id FROM port
+//         WHERE subdomain = $subdomain_id AND port = $port.port).id;
+//     UPDATE $subdomain_id MERGE {
+//         open_ports: array::append($subdomain_id.open_ports, $port_id)
+//     };
+// "#;
