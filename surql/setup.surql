@@ -58,6 +58,8 @@ DEFINE FIELD port ON TABLE port TYPE int
     ASSERT $value != NONE;
 DEFINE FIELD findings ON TABLE port TYPE array
     VALUE $value OR [];
+DEFINE FIELD is_open ON TABLE port TYPE boolean
+    VALUE $value OR true;
 DEFINE FIELD findings.* ON TABLE port TYPE object;
 
 -- TODO: define events
