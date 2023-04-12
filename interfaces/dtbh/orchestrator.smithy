@@ -28,7 +28,7 @@ operation RunScans {
 
 structure RunScansRequest {
   @required
-  userId: String,
+  jwt: String,
   /// The target to scan
   @required
   target: String,

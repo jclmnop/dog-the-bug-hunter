@@ -28,15 +28,14 @@ pub struct GetReportsRequest {
     #[serde(rename = "endTimestamp")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_timestamp: Option<Timestamp>,
+    #[serde(default)]
+    pub jwt: String,
     /// If not specified, defaults to earliest report
     #[serde(rename = "startTimestamp")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_timestamp: Option<Timestamp>,
     /// If no target is specified, all target reports for the given time range will be returned
     pub target: crate::api::Targets,
-    #[serde(rename = "userId")]
-    #[serde(default)]
-    pub user_id: String,
 }
 
 // Encode GetReportsRequest as CBOR and append to output stream
@@ -57,6 +56,8 @@ where
     } else {
         e.null()?;
     }
+    e.str("jwt")?;
+    e.str(&val.jwt)?;
     if let Some(val) = val.start_timestamp.as_ref() {
         e.str("startTimestamp")?;
         e.i64(val.sec)?;
@@ -66,8 +67,6 @@ where
     }
     e.str("target")?;
     crate::api::encode_targets(e, &val.target)?;
-    e.str("userId")?;
-    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -78,9 +77,9 @@ pub fn decode_get_reports_request(
 ) -> Result<GetReportsRequest, RpcError> {
     let __result = {
         let mut end_timestamp: Option<Option<Timestamp>> = Some(None);
+        let mut jwt: Option<String> = None;
         let mut start_timestamp: Option<Option<Timestamp>> = Some(None);
         let mut target: Option<crate::api::Targets> = None;
-        let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
             wasmbus_rpc::cbor::Type::Array => true,
@@ -106,7 +105,8 @@ pub fn decode_get_reports_request(
                             }))
                         }
                     }
-                    1 => {
+                    1 => jwt = Some(d.str()?.to_string()),
+                    2 => {
                         start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
@@ -117,12 +117,11 @@ pub fn decode_get_reports_request(
                             }))
                         }
                     }
-                    2 => {
+                    3 => {
                         target = Some(crate::api::decode_targets(d).map_err(|e| {
                             format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
                         })?)
                     }
-                    3 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -141,6 +140,7 @@ pub fn decode_get_reports_request(
                             }))
                         }
                     }
+                    "jwt" => jwt = Some(d.str()?.to_string()),
                     "startTimestamp" => {
                         start_timestamp = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
@@ -157,28 +157,27 @@ pub fn decode_get_reports_request(
                             format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
                         })?)
                     }
-                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
         }
         GetReportsRequest {
             end_timestamp: end_timestamp.unwrap(),
+
+            jwt: if let Some(__x) = jwt {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field GetReportsRequest.jwt (#1)".to_string(),
+                ));
+            },
             start_timestamp: start_timestamp.unwrap(),
 
             target: if let Some(__x) = target {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field GetReportsRequest.target (#2)".to_string(),
-                ));
-            },
-
-            user_id: if let Some(__x) = user_id {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field GetReportsRequest.user_id (#3)".to_string(),
+                    "missing field GetReportsRequest.target (#3)".to_string(),
                 ));
             },
         }
@@ -504,6 +503,102 @@ pub fn decode_reports(d: &mut wasmbus_rpc::cbor::Decoder<'_>) -> Result<Reports,
     Ok(__result)
 }
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct WriteReportRequest {
+    #[serde(default)]
+    pub jwt: String,
+    pub report: Report,
+}
+
+// Encode WriteReportRequest as CBOR and append to output stream
+#[doc(hidden)]
+#[allow(unused_mut)]
+pub fn encode_write_report_request<W: wasmbus_rpc::cbor::Write>(
+    mut e: &mut wasmbus_rpc::cbor::Encoder<W>,
+    val: &WriteReportRequest,
+) -> RpcResult<()>
+where
+    <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
+{
+    e.map(2)?;
+    e.str("jwt")?;
+    e.str(&val.jwt)?;
+    e.str("report")?;
+    encode_report(e, &val.report)?;
+    Ok(())
+}
+
+// Decode WriteReportRequest from cbor input stream
+#[doc(hidden)]
+pub fn decode_write_report_request(
+    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
+) -> Result<WriteReportRequest, RpcError> {
+    let __result = {
+        let mut jwt: Option<String> = None;
+        let mut report: Option<Report> = None;
+
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct WriteReportRequest, expected array or map".to_string(),
+                ))
+            }
+        };
+        if is_array {
+            let len = d.fixed_array()?;
+            for __i in 0..(len as usize) {
+                match __i {
+                    0 => jwt = Some(d.str()?.to_string()),
+                    1 => {
+                        report = Some(decode_report(d).map_err(|e| {
+                            format!(
+                                "decoding 'jclmnop.dtbh.interface.report_writer#Report': {}",
+                                e
+                            )
+                        })?)
+                    }
+                    _ => d.skip()?,
+                }
+            }
+        } else {
+            let len = d.fixed_map()?;
+            for __i in 0..(len as usize) {
+                match d.str()? {
+                    "jwt" => jwt = Some(d.str()?.to_string()),
+                    "report" => {
+                        report = Some(decode_report(d).map_err(|e| {
+                            format!(
+                                "decoding 'jclmnop.dtbh.interface.report_writer#Report': {}",
+                                e
+                            )
+                        })?)
+                    }
+                    _ => d.skip()?,
+                }
+            }
+        }
+        WriteReportRequest {
+            jwt: if let Some(__x) = jwt {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field WriteReportRequest.jwt (#0)".to_string(),
+                ));
+            },
+
+            report: if let Some(__x) = report {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field WriteReportRequest.report (#1)".to_string(),
+                ));
+            },
+        }
+    };
+    Ok(__result)
+}
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct WriteReportResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -607,8 +702,12 @@ pub trait ReportWriter {
     fn contract_id() -> &'static str {
         "dtbh:reportwriter"
     }
-    /// Write a generated report to keyvalue storage
-    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult>;
+    /// Create the initial table for the report
+    async fn write_report(
+        &self,
+        ctx: &Context,
+        arg: &WriteReportRequest,
+    ) -> RpcResult<WriteReportResult>;
     async fn get_reports(
         &self,
         ctx: &Context,
@@ -624,8 +723,8 @@ pub trait ReportWriterReceiver: MessageDispatch + ReportWriter {
     async fn dispatch(&self, ctx: &Context, message: Message<'_>) -> Result<Vec<u8>, RpcError> {
         match message.method {
             "WriteReport" => {
-                let value: Report = wasmbus_rpc::common::deserialize(&message.arg)
-                    .map_err(|e| RpcError::Deser(format!("'Report': {}", e)))?;
+                let value: WriteReportRequest = wasmbus_rpc::common::deserialize(&message.arg)
+                    .map_err(|e| RpcError::Deser(format!("'WriteReportRequest': {}", e)))?;
 
                 let resp = ReportWriter::write_report(self, ctx, &value).await?;
                 let buf = wasmbus_rpc::common::serialize(&resp)?;
@@ -691,8 +790,12 @@ impl ReportWriterSender<wasmbus_rpc::actor::prelude::WasmHost> {
 #[async_trait]
 impl<T: Transport + std::marker::Sync + std::marker::Send> ReportWriter for ReportWriterSender<T> {
     #[allow(unused)]
-    /// Write a generated report to keyvalue storage
-    async fn write_report(&self, ctx: &Context, arg: &Report) -> RpcResult<WriteReportResult> {
+    /// Create the initial table for the report
+    async fn write_report(
+        &self,
+        ctx: &Context,
+        arg: &WriteReportRequest,
+    ) -> RpcResult<WriteReportResult> {
         let buf = wasmbus_rpc::common::serialize(arg)?;
 
         let resp = self

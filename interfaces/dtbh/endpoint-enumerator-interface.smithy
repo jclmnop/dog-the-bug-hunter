@@ -50,7 +50,8 @@ structure EnumerateEndpointsResponse {
   @required
   timestamp: Timestamp,
   @required
-  userId: String,
+  @sensitive
+  jwt: String,
   @required
   target: String,
   reason: String,

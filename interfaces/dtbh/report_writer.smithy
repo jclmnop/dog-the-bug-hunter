@@ -23,9 +23,9 @@ service ReportWriter {
   operations: [ WriteReport, GetReports ]
 }
 
-/// Write a generated report to keyvalue storage
+/// Create the initial table for the report
 operation WriteReport {
-  input: Report,
+  input: WriteReportRequest,
   output: WriteReportResult,
 }
 
@@ -41,7 +41,7 @@ operation GetReports {
 
 structure GetReportsRequest {
   @required
-  userId: String,
+  jwt: String,
   /// If no target is specified, all target reports for the given time range will be returned
   @required
   target: Targets,
@@ -56,6 +56,14 @@ structure GetReportsResult {
   success: Boolean,
   reason: String,
   reports: Reports,
+}
+
+structure WriteReportRequest {
+  @required
+  @sensitive
+  jwt: String,
+  @required
+  report: Report,
 }
 
 structure Report {

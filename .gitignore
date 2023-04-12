@@ -189,3 +189,4 @@ interfaces/dtbh/rust/build.rs
 interfaces/sleepy
 providers/sleepy
 history.txt
+./history.txt

@@ -61,9 +61,9 @@ pub mod scanner_prelude {
         async fn process_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
             let params: ScanEndpointParams =
                 serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
-            let (target, user_id, timestamp) = (
+            let (target, jwt, timestamp) = (
                 params.target.clone(),
-                params.user_id.clone(),
+                params.jwt.clone(),
                 params.timestamp.clone(),
             );
             let result = match self.scan_all(ctx, params).await {
@@ -74,7 +74,7 @@ pub mod scanner_prelude {
                     success: false,
                     target,
                     timestamp,
-                    user_id,
+                    jwt,
                 },
             };
             match self.publish_result(ctx, result).await {
@@ -98,7 +98,7 @@ pub mod scanner_prelude {
                     },
                     target: result.target,
                     timestamp: result.timestamp,
-                    user_id: result.user_id,
+                    user_id: result.jwt,
                 };
                 let msg = PubMessage {
                     subject: topic.to_string(),
@@ -151,7 +151,7 @@ pub mod scanner_prelude {
                 success: true,
                 target: params.target,
                 timestamp: params.timestamp,
-                user_id: params.user_id,
+                jwt: params.jwt,
             })
         }
 

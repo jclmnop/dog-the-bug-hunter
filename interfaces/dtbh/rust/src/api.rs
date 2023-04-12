@@ -24,13 +24,12 @@ pub const SMITHY_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ScanRequest {
+    #[serde(default)]
+    pub jwt: String,
     pub targets: Targets,
     #[serde(rename = "userAgentTag")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_agent_tag: Option<String>,
-    #[serde(rename = "userId")]
-    #[serde(default)]
-    pub user_id: String,
 }
 
 // Encode ScanRequest as CBOR and append to output stream
@@ -44,6 +43,8 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(3)?;
+    e.str("jwt")?;
+    e.str(&val.jwt)?;
     e.str("targets")?;
     encode_targets(e, &val.targets)?;
     if let Some(val) = val.user_agent_tag.as_ref() {
@@ -52,8 +53,6 @@ where
     } else {
         e.null()?;
     }
-    e.str("userId")?;
-    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -63,9 +62,9 @@ pub fn decode_scan_request(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<ScanRequest, RpcError> {
     let __result = {
+        let mut jwt: Option<String> = None;
         let mut targets: Option<Targets> = None;
         let mut user_agent_tag: Option<Option<String>> = Some(None);
-        let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
             wasmbus_rpc::cbor::Type::Array => true,
@@ -80,12 +79,13 @@ pub fn decode_scan_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => {
+                    0 => jwt = Some(d.str()?.to_string()),
+                    1 => {
                         targets = Some(decode_targets(d).map_err(|e| {
                             format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
                         })?)
                     }
-                    1 => {
+                    2 => {
                         user_agent_tag = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
@@ -93,7 +93,7 @@ pub fn decode_scan_request(
                             Some(Some(d.str()?.to_string()))
                         }
                     }
-                    2 => user_id = Some(d.str()?.to_string()),
+
                     _ => d.skip()?,
                 }
             }
@@ -101,6 +101,7 @@ pub fn decode_scan_request(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
+                    "jwt" => jwt = Some(d.str()?.to_string()),
                     "targets" => {
                         targets = Some(decode_targets(d).map_err(|e| {
                             format!("decoding 'jclmnop.dtbh.interface.api#Targets': {}", e)
@@ -114,28 +115,27 @@ pub fn decode_scan_request(
                             Some(Some(d.str()?.to_string()))
                         }
                     }
-                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
         }
         ScanRequest {
+            jwt: if let Some(__x) = jwt {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field ScanRequest.jwt (#0)".to_string(),
+                ));
+            },
+
             targets: if let Some(__x) = targets {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field ScanRequest.targets (#0)".to_string(),
+                    "missing field ScanRequest.targets (#1)".to_string(),
                 ));
             },
             user_agent_tag: user_agent_tag.unwrap(),
-
-            user_id: if let Some(__x) = user_id {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field ScanRequest.user_id (#2)".to_string(),
-                ));
-            },
         }
     };
     Ok(__result)

@@ -8,7 +8,8 @@ use org.wasmcloud.model#U16
 
 structure ScanRequest {
     @required
-    userId: String,
+    @sensitive
+    jwt: String,
     @required,
     targets: Targets,
     userAgentTag: String,

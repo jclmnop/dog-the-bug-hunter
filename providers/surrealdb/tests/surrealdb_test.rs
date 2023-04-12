@@ -327,7 +327,7 @@ async fn test_scoped_query(_opts: &TestOptions) -> RpcResult<()> {
 
         DEFINE TABLE scoped_table SCHEMALESS
         PERMISSIONS
-            FOR select, update, delete WHERE user = $token.ID AND $scope = "test_query_scope"
+            FOR select, update, delete WHERE user = $auth.id AND $scope = "test_query_scope"
             FOR create WHERE $scope = "test_query_scope";
 
         DEFINE SCOPE wrong_scope

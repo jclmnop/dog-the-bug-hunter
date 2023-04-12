@@ -40,7 +40,7 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
                 let params = ScanEndpointParams {
                     subdomain: subdomain.clone(),
                     user_agent_tag: None,
-                    user_id: req.user_id.clone(),
+                    jwt: req.jwt.clone(),
                     timestamp: req.timestamp.clone(),
                     target: req.target.clone(),
                 };

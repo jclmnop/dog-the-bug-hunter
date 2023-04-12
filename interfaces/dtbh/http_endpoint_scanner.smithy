@@ -34,7 +34,7 @@ structure ScanEndpointParams {
   subdomain: Subdomain,
   /// User ID is passed from the API, currently only used for logging purposes
   @required
-  userId: String,
+  jwt: String,
   @required
   timestamp: Timestamp,
   @required
@@ -51,7 +51,7 @@ structure ScanEndpointResult {
   reason: String,
   subdomain: Subdomain,
   @required
-  userId: String,
+  jwt: String,
   @required
   timestamp: Timestamp,
   @required

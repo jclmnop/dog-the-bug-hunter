@@ -24,6 +24,8 @@ pub const SMITHY_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EnumerateEndpointsResponse {
+    #[serde(default)]
+    pub jwt: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -36,9 +38,6 @@ pub struct EnumerateEndpointsResponse {
     /// Timestamp of when the request was received, used later for logs.
     #[serde(default)]
     pub timestamp: Timestamp,
-    #[serde(rename = "userId")]
-    #[serde(default)]
-    pub user_id: String,
 }
 
 // Encode EnumerateEndpointsResponse as CBOR and append to output stream
@@ -52,6 +51,8 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(6)?;
+    e.str("jwt")?;
+    e.str(&val.jwt)?;
     if let Some(val) = val.reason.as_ref() {
         e.str("reason")?;
         e.str(val)?;
@@ -71,8 +72,6 @@ where
     e.str("timestamp")?;
     e.i64(val.timestamp.sec)?;
     e.u32(val.timestamp.nsec)?;
-    e.str("userId")?;
-    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -82,12 +81,12 @@ pub fn decode_enumerate_endpoints_response(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<EnumerateEndpointsResponse, RpcError> {
     let __result = {
+        let mut jwt: Option<String> = None;
         let mut reason: Option<Option<String>> = Some(None);
         let mut subdomains: Option<Option<crate::common::Subdomains>> = Some(None);
         let mut success: Option<bool> = None;
         let mut target: Option<String> = None;
         let mut timestamp: Option<Timestamp> = None;
-        let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
             wasmbus_rpc::cbor::Type::Array => true,
@@ -102,7 +101,8 @@ pub fn decode_enumerate_endpoints_response(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => {
+                    0 => jwt = Some(d.str()?.to_string()),
+                    1 => {
                         reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
@@ -110,7 +110,7 @@ pub fn decode_enumerate_endpoints_response(
                             Some(Some(d.str()?.to_string()))
                         }
                     }
-                    1 => {
+                    2 => {
                         subdomains = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
                             Some(None)
@@ -123,15 +123,14 @@ pub fn decode_enumerate_endpoints_response(
                             })?))
                         }
                     }
-                    2 => success = Some(d.bool()?),
-                    3 => target = Some(d.str()?.to_string()),
-                    4 => {
+                    3 => success = Some(d.bool()?),
+                    4 => target = Some(d.str()?.to_string()),
+                    5 => {
                         timestamp = Some(wasmbus_rpc::Timestamp {
                             sec: d.i64()?,
                             nsec: d.u32()?,
                         })
                     }
-                    5 => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -139,6 +138,7 @@ pub fn decode_enumerate_endpoints_response(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
+                    "jwt" => jwt = Some(d.str()?.to_string()),
                     "reason" => {
                         reason = if wasmbus_rpc::cbor::Type::Null == d.datatype()? {
                             d.skip()?;
@@ -168,12 +168,18 @@ pub fn decode_enumerate_endpoints_response(
                             nsec: d.u32()?,
                         })
                     }
-                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
         }
         EnumerateEndpointsResponse {
+            jwt: if let Some(__x) = jwt {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field EnumerateEndpointsResponse.jwt (#0)".to_string(),
+                ));
+            },
             reason: reason.unwrap(),
             subdomains: subdomains.unwrap(),
 
@@ -181,7 +187,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.success (#2)".to_string(),
+                    "missing field EnumerateEndpointsResponse.success (#3)".to_string(),
                 ));
             },
 
@@ -189,7 +195,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.target (#3)".to_string(),
+                    "missing field EnumerateEndpointsResponse.target (#4)".to_string(),
                 ));
             },
 
@@ -197,15 +203,7 @@ pub fn decode_enumerate_endpoints_response(
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.timestamp (#4)".to_string(),
-                ));
-            },
-
-            user_id: if let Some(__x) = user_id {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field EnumerateEndpointsResponse.user_id (#5)".to_string(),
+                    "missing field EnumerateEndpointsResponse.timestamp (#5)".to_string(),
                 ));
             },
         }

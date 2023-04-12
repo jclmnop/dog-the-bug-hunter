@@ -60,7 +60,7 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
         //TODO: add user agent tag
         let scan_req = RunScansRequest {
             target: target.clone(),
-            user_id: req.user_id.clone(),
+            jwt: req.jwt.clone(),
         };
         match orchestrator.run_scans(ctx, &scan_req).await {
             Ok(success) if success => {}
@@ -139,7 +139,7 @@ mod tests {
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect(),
-            user_id: "test".to_string(),
+            jwt: "test".to_string(),
             user_agent_tag: None,
         };
         let valid_http_req = HttpRequest {
@@ -161,7 +161,7 @@ mod tests {
     #[webassembly_test]
     fn test_parse_req_type_get_reports() {
         let valid_get_reports_req = GetReportsRequest {
-            user_id: "test".to_string(),
+            jwt: "test".to_string(),
             target: vec!["www.google.com".to_string()],
             start_timestamp: None,
             end_timestamp: Some(Timestamp::new(420, 69).unwrap()),
@@ -190,11 +190,11 @@ mod tests {
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect(),
-            user_id: "test".to_string(),
+            jwt: "test".to_string(),
             user_agent_tag: None,
         };
         let valid_get_reports_req = GetReportsRequest {
-            user_id: "test".to_string(),
+            jwt: "test".to_string(),
             target: vec!["www.google.com".to_string()],
             start_timestamp: None,
             end_timestamp: Some(Timestamp::new(420, 69).unwrap()),

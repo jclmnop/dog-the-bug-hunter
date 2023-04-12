@@ -24,12 +24,11 @@ pub const SMITHY_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RunScansRequest {
+    #[serde(default)]
+    pub jwt: String,
     /// The target to scan
     #[serde(default)]
     pub target: String,
-    #[serde(rename = "userId")]
-    #[serde(default)]
-    pub user_id: String,
 }
 
 // Encode RunScansRequest as CBOR and append to output stream
@@ -43,10 +42,10 @@ where
     <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
 {
     e.map(2)?;
+    e.str("jwt")?;
+    e.str(&val.jwt)?;
     e.str("target")?;
     e.str(&val.target)?;
-    e.str("userId")?;
-    e.str(&val.user_id)?;
     Ok(())
 }
 
@@ -56,8 +55,8 @@ pub fn decode_run_scans_request(
     d: &mut wasmbus_rpc::cbor::Decoder<'_>,
 ) -> Result<RunScansRequest, RpcError> {
     let __result = {
+        let mut jwt: Option<String> = None;
         let mut target: Option<String> = None;
-        let mut user_id: Option<String> = None;
 
         let is_array = match d.datatype()? {
             wasmbus_rpc::cbor::Type::Array => true,
@@ -72,8 +71,8 @@ pub fn decode_run_scans_request(
             let len = d.fixed_array()?;
             for __i in 0..(len as usize) {
                 match __i {
-                    0 => target = Some(d.str()?.to_string()),
-                    1 => user_id = Some(d.str()?.to_string()),
+                    0 => jwt = Some(d.str()?.to_string()),
+                    1 => target = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
@@ -81,26 +80,26 @@ pub fn decode_run_scans_request(
             let len = d.fixed_map()?;
             for __i in 0..(len as usize) {
                 match d.str()? {
+                    "jwt" => jwt = Some(d.str()?.to_string()),
                     "target" => target = Some(d.str()?.to_string()),
-                    "userId" => user_id = Some(d.str()?.to_string()),
                     _ => d.skip()?,
                 }
             }
         }
         RunScansRequest {
+            jwt: if let Some(__x) = jwt {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field RunScansRequest.jwt (#0)".to_string(),
+                ));
+            },
+
             target: if let Some(__x) = target {
                 __x
             } else {
                 return Err(RpcError::Deser(
-                    "missing field RunScansRequest.target (#0)".to_string(),
-                ));
-            },
-
-            user_id: if let Some(__x) = user_id {
-                __x
-            } else {
-                return Err(RpcError::Deser(
-                    "missing field RunScansRequest.user_id (#1)".to_string(),
+                    "missing field RunScansRequest.target (#1)".to_string(),
                 ));
             },
         }
