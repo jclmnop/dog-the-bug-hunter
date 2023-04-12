@@ -3,10 +3,13 @@ use dtbh_interface::report_writer_prelude::*;
 use dtbh_interface::scanner_prelude::*;
 use dtbh_interface::{GetReportsRequest, GetReportsResult, WriteReportRequest};
 use serde_json::json;
+use wasmbus_rpc::Timestamp;
 use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
-use wasmcloud_interface_surrealdb::{Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbSender};
+use wasmcloud_interface_surrealdb::{
+    Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbSender,
+};
 
 const CALL_ALIAS: &str = "dtbh/report-writer";
 const PUB_TOPIC: &str = "dtbh.reports.out";
@@ -17,7 +20,11 @@ struct ReportActor {}
 
 #[async_trait]
 impl ReportWriter for ReportActor {
-    async fn write_report(&self, ctx: &Context, req: &WriteReportRequest) -> RpcResult<WriteReportResult> {
+    async fn write_report(
+        &self,
+        ctx: &Context,
+        req: &WriteReportRequest,
+    ) -> RpcResult<WriteReportResult> {
         match new_report(ctx, req).await {
             Ok(write_report_result) => Ok(write_report_result),
             Err(e) => Ok(WriteReportResult {
@@ -30,9 +37,90 @@ impl ReportWriter for ReportActor {
     async fn get_reports(
         &self,
         ctx: &Context,
-        arg: &GetReportsRequest,
+        req: &GetReportsRequest,
     ) -> RpcResult<GetReportsResult> {
-        todo!()
+        let client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
+        let scope = RequestScope {
+            jwt: Some(req.jwt.clone()),
+            ..Default::default()
+        };
+        let mut sql = r#"
+            SELECT * FROM report WHERE
+        "#
+        .to_string();
+        if !req.target.is_empty() {
+            sql.extend("target INSIDE $targets AND ".chars());
+        }
+        sql.extend("timestamp >= <datetime> $start AND timestamp <= <datetime> $end ".chars());
+        sql.extend("FETCH subdomains, subdomains.open_ports;".chars());
+        let start_timestamp = req
+            .start_timestamp
+            .unwrap_or(Timestamp::new(0, 0)?)
+            .as_nanos();
+        let end_timestamp = if req.end_timestamp.is_some() {
+            req.end_timestamp.unwrap().as_nanos()
+        } else {
+            u128::MAX
+        };
+        let bindings = vec![json!({
+            "start": start_timestamp,
+            "end": end_timestamp,
+            "targets": req.target
+        })
+        .to_string()];
+        let result = client
+            .query(
+                ctx,
+                &QueryRequest {
+                    bindings,
+                    queries: vec![sql],
+                    scope: Some(scope),
+                },
+            )
+            .await;
+
+        Ok(match result {
+            Ok(result) => {
+                if result.iter().any(|r| !r.errors.is_empty()) {
+                    GetReportsResult {
+                        reason: Some("Error retrieving report(s)".to_string()),
+                        reports: None,
+                        success: false,
+                    }
+                } else {
+                    let default_reponse = QueryResponse {
+                        errors: vec![],
+                        response: vec![],
+                    };
+                    let response_ser = result.first().unwrap_or(&default_reponse);
+                    let mut reports: Vec<Report> = vec![];
+                    for report_ser in &response_ser.response {
+                        match serde_json::from_slice(&report_ser) {
+                            Ok(report) => {
+                                reports.push(report);
+                            }
+                            Err(e) => {
+                                return Ok(GetReportsResult {
+                                    reason: Some(format!("Failed to deserialise reports: {e}")),
+                                    reports: None,
+                                    success: false,
+                                })
+                            }
+                        }
+                    }
+                    GetReportsResult {
+                        reason: None,
+                        reports: Some(reports),
+                        success: true,
+                    }
+                }
+            }
+            Err(e) => GetReportsResult {
+                reason: Some(format!("Failed to fetch reports: {e}")),
+                reports: None,
+                success: false,
+            },
+        })
     }
 }
 
@@ -123,7 +211,10 @@ const SQL_COMMIT: &str = r#"COMMIT;"#;
 async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
     let mut query_string = String::new();
-    let scope = RequestScope { jwt: Some(req.jwt.clone()), ..Default::default() };
+    let scope = RequestScope {
+        jwt: Some(req.jwt.clone()),
+        ..Default::default()
+    };
 
     // Build the query as one string so it can be executed as a transaction
     query_string.extend(SQL_CREATE_REPORT.chars());
@@ -140,20 +231,24 @@ async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteRepo
     //TODO: setup events
     query_string.extend(SQL_COMMIT.chars());
 
-    let bindings = vec![
-        json!({
-            "timestamp": req.report.timestamp.as_nanos(),
-            "target": req.report.target,
-            "subdomains": req.report.subdomains
-        }).to_string()
-    ];
+    let bindings = vec![json!({
+        "timestamp": req.report.timestamp.as_nanos(),
+        "target": req.report.target,
+        "subdomains": req.report.subdomains
+    })
+    .to_string()];
     let queries = vec![query_string];
 
-    let results = surreal_client.query(ctx, &QueryRequest {
-        bindings,
-        queries,
-        scope: Some(scope),
-    }).await?;
+    let results = surreal_client
+        .query(
+            ctx,
+            &QueryRequest {
+                bindings,
+                queries,
+                scope: Some(scope),
+            },
+        )
+        .await?;
 
     if results.iter().any(|r| !r.errors.is_empty()) {
         Ok(WriteReportResult {
@@ -174,18 +269,18 @@ async fn update_report(
 ) -> Result<WriteReportResult> {
     let surreal_db = SurrealDbSender::new();
     //TODO: decode user_id from JWT (in orchestrator)
-    let scope = RequestScope {jwt: Some(jwt), ..Default::default()};
-    let report_id = format!("{}{}{}", report.user_id, report.target, report.timestamp.as_nanos());
-    let sql = r#"
-        LET $id = type::thing("reports", crypto::md5($report_id));
-        UPDATE $id MERGE timestamp = $timestamp, user_id = $token.ID;
-    "#.to_string();
-
+    let scope = RequestScope {
+        jwt: Some(jwt),
+        ..Default::default()
+    };
+    let report_id = format!(
+        "{}{}{}",
+        report.user_id,
+        report.target,
+        report.timestamp.as_nanos()
+    );
     todo!()
 }
-
-
-
 
 // async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
 //     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
