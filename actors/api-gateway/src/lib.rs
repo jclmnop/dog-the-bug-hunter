@@ -1,3 +1,5 @@
+mod auth;
+
 use anyhow::{anyhow, Error};
 use dtbh_interface::api_gateway_prelude::*;
 use wasmbus_rpc::actor::prelude::*;
@@ -15,6 +17,9 @@ enum RequestType {
     GetReports(GetReportsRequest),
     Scan(ScanRequest),
     Invalid(Error),
+    Unauthorised
+    //TODO: SignIn
+    //TODO: SignUp
 }
 
 //TODO: auth
@@ -22,7 +27,6 @@ enum RequestType {
 #[async_trait]
 impl HttpServer for ApiGatewayActor {
     async fn handle_request(&self, ctx: &Context, req: &HttpRequest) -> RpcResult<HttpResponse> {
-        if auth(ctx, req).await {
             match RequestType::from(req.to_owned()) {
                 RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
                     .await
@@ -34,20 +38,15 @@ impl HttpServer for ApiGatewayActor {
                     error!("{e}");
                     Ok(HttpResponse::not_found())
                 }
+                RequestType::Unauthorised => {
+                    Ok(HttpResponse {
+                        status_code: 401,
+                        header: auth::www_auth_header(),
+                        body: vec![],
+                    })
+                }
             }
-        } else {
-            Ok(HttpResponse {
-                status_code: 401,
-                header: Default::default(),
-                body: vec![],
-            })
-        }
     }
-}
-
-async fn auth(ctx: &Context, req: &HttpRequest) -> bool {
-    //TODO!
-    true
 }
 
 async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
@@ -113,11 +112,25 @@ impl From<HttpRequest> for RequestType {
         let method = req.method.to_ascii_uppercase();
         match (method.as_str(), path) {
             ("POST", "scan") => match serde_json::from_slice::<ScanRequest>(&req.body) {
-                Ok(scan_request) => Self::Scan(scan_request),
+                Ok(mut scan_request) => {
+                    if let Some(jwt) = auth::get_jwt_from_headers(&req.header) {
+                        scan_request.jwt = jwt;
+                        Self::Scan(scan_request)
+                    } else {
+                        Self::Unauthorised
+                    }
+                }
                 Err(e) => Self::Invalid(anyhow!("Invalid body for scan request: {e}")),
             },
             ("POST", "reports") => match serde_json::from_slice::<GetReportsRequest>(&req.body) {
-                Ok(reports_request) => Self::GetReports(reports_request),
+                Ok(mut reports_request) => {
+                    if let Some(jwt) = auth::get_jwt_from_headers(&req.header) {
+                        reports_request.jwt = jwt;
+                        Self::GetReports(reports_request)
+                    } else {
+                        Self::Unauthorised
+                    }
+                },
                 Err(e) => Self::Invalid(anyhow!("Invalid body for reports request: {e}")),
             },
             _ => Self::Invalid(anyhow!("Invalid method or path {method}: {path}")),

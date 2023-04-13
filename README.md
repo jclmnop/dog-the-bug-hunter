@@ -50,8 +50,8 @@ providers to the super-constellation, on any cloud provider.
 # TODO
 ## Necessary for Hackathon PoC
 ### General
-- [ ] Decide between KV/SQL/surrealDB for storing reports (leaning towards surrealDB)
-  - [ ] build a surrealDB provider?
+- [x] Decide between KV/SQL/surrealDB for storing reports (leaning towards surrealDB)
+  - [x] build a surrealDB provider
 - [ ] Test on local
 - [ ] Test on cosmonic
 - [ ] Test scaling on Railway/Digital Ocean
@@ -71,15 +71,15 @@ providers to the super-constellation, on any cloud provider.
 #### api-gateway
 - [x] handle POST request to /scan
 - [x] handle POST request to /reports (POST bc it will require auth)
-- [ ] very basic auth for testing (surrealDB?)
+- [ ] very basic auth for testing (surrealDB)
   - [ ] sign up
   - [ ] sign in
-  - [ ] JWT auth token?
+  - [ ] JWT auth token + decode userID
 - [ ] improve error handling
 #### report-writer
 - [x] Implement message subscription for vulnerability scanner results 
-- [ ] write results to storage
-- [ ] Implement get_reports() rpc method
+- [x] write results to storage
+- [x] Implement get_reports() rpc method
 #### orchestrator
 - [x] implement handling from API Gateway -> endpoint enumerator
 - [x] implement handling from endpoint enumerator callback -> publish to vulnerability scanner NATS channel
@@ -100,11 +100,11 @@ providers to the super-constellation, on any cloud provider.
 - [x] Implement task queue so multiple targets can be submitted at once, and the provider can work through them with a 
       configurable concurrency value in the link definition
 #### SurrealDB
-- [ ] simple functions
-  - [ ] query
+- [x] simple functions
+  - [x] query
   - [ ] execute?
-  - [ ] signup
-  - [ ] signin
+  - [x] signup
+  - [x] signin
 #### "wasmcloud:timing" interface + provider
 - [x] publish interface to crate
 - [x] publish provider to OCI

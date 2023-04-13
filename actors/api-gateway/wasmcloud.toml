@@ -4,7 +4,7 @@ type = "actor"
 version = "0.1.0"
 
 [actor]
-claims = ["wasmcloud:httpserver", "wasmcloud:builtin:logging"]
+claims = ["wasmcloud:httpserver", "wasmcloud:builtin:logging", "wasmcloud:surrealdb"]
 call-alias = "dtbh/api-gateway"
 
 [rust]

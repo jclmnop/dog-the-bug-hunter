@@ -16,6 +16,24 @@ structure ScanRequest {
     // TODO: config for optional fuzzing + specific params?
 }
 
+structure SignUpRequest {
+    @required
+    userId: String,
+    @required
+    @sensitive
+    password: String,
+    // TODO: email address?
+}
+
+structure SignInRequest {
+    @required
+    userId: String,
+    @required
+    @sensitive
+    password: String,
+}
+
 list Targets {
     member: String
 }
+

@@ -140,6 +140,174 @@ pub fn decode_scan_request(
     };
     Ok(__result)
 }
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SignInRequest {
+    #[serde(default)]
+    pub password: String,
+    #[serde(rename = "userId")]
+    #[serde(default)]
+    pub user_id: String,
+}
+
+// Encode SignInRequest as CBOR and append to output stream
+#[doc(hidden)]
+#[allow(unused_mut)]
+pub fn encode_sign_in_request<W: wasmbus_rpc::cbor::Write>(
+    mut e: &mut wasmbus_rpc::cbor::Encoder<W>,
+    val: &SignInRequest,
+) -> RpcResult<()>
+where
+    <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
+{
+    e.map(2)?;
+    e.str("password")?;
+    e.str(&val.password)?;
+    e.str("userId")?;
+    e.str(&val.user_id)?;
+    Ok(())
+}
+
+// Decode SignInRequest from cbor input stream
+#[doc(hidden)]
+pub fn decode_sign_in_request(
+    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
+) -> Result<SignInRequest, RpcError> {
+    let __result = {
+        let mut password: Option<String> = None;
+        let mut user_id: Option<String> = None;
+
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct SignInRequest, expected array or map".to_string(),
+                ))
+            }
+        };
+        if is_array {
+            let len = d.fixed_array()?;
+            for __i in 0..(len as usize) {
+                match __i {
+                    0 => password = Some(d.str()?.to_string()),
+                    1 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        } else {
+            let len = d.fixed_map()?;
+            for __i in 0..(len as usize) {
+                match d.str()? {
+                    "password" => password = Some(d.str()?.to_string()),
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        }
+        SignInRequest {
+            password: if let Some(__x) = password {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field SignInRequest.password (#0)".to_string(),
+                ));
+            },
+
+            user_id: if let Some(__x) = user_id {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field SignInRequest.user_id (#1)".to_string(),
+                ));
+            },
+        }
+    };
+    Ok(__result)
+}
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SignUpRequest {
+    #[serde(default)]
+    pub password: String,
+    #[serde(rename = "userId")]
+    #[serde(default)]
+    pub user_id: String,
+}
+
+// Encode SignUpRequest as CBOR and append to output stream
+#[doc(hidden)]
+#[allow(unused_mut)]
+pub fn encode_sign_up_request<W: wasmbus_rpc::cbor::Write>(
+    mut e: &mut wasmbus_rpc::cbor::Encoder<W>,
+    val: &SignUpRequest,
+) -> RpcResult<()>
+where
+    <W as wasmbus_rpc::cbor::Write>::Error: std::fmt::Display,
+{
+    e.map(2)?;
+    e.str("password")?;
+    e.str(&val.password)?;
+    e.str("userId")?;
+    e.str(&val.user_id)?;
+    Ok(())
+}
+
+// Decode SignUpRequest from cbor input stream
+#[doc(hidden)]
+pub fn decode_sign_up_request(
+    d: &mut wasmbus_rpc::cbor::Decoder<'_>,
+) -> Result<SignUpRequest, RpcError> {
+    let __result = {
+        let mut password: Option<String> = None;
+        let mut user_id: Option<String> = None;
+
+        let is_array = match d.datatype()? {
+            wasmbus_rpc::cbor::Type::Array => true,
+            wasmbus_rpc::cbor::Type::Map => false,
+            _ => {
+                return Err(RpcError::Deser(
+                    "decoding struct SignUpRequest, expected array or map".to_string(),
+                ))
+            }
+        };
+        if is_array {
+            let len = d.fixed_array()?;
+            for __i in 0..(len as usize) {
+                match __i {
+                    0 => password = Some(d.str()?.to_string()),
+                    1 => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        } else {
+            let len = d.fixed_map()?;
+            for __i in 0..(len as usize) {
+                match d.str()? {
+                    "password" => password = Some(d.str()?.to_string()),
+                    "userId" => user_id = Some(d.str()?.to_string()),
+                    _ => d.skip()?,
+                }
+            }
+        }
+        SignUpRequest {
+            password: if let Some(__x) = password {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field SignUpRequest.password (#0)".to_string(),
+                ));
+            },
+
+            user_id: if let Some(__x) = user_id {
+                __x
+            } else {
+                return Err(RpcError::Deser(
+                    "missing field SignUpRequest.user_id (#1)".to_string(),
+                ));
+            },
+        }
+    };
+    Ok(__result)
+}
 pub type Targets = Vec<String>;
 
 // Encode Targets as CBOR and append to output stream
