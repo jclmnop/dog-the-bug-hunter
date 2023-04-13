@@ -138,9 +138,145 @@ impl MessageSubscriber for ReportActor {
             body: serde_json::to_vec(&report_json).map_err(|e| RpcError::Ser(e.to_string()))?,
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
-        publisher.publish(ctx, &pub_msg).await
 
-        //TODO: write to db
+        update_report(ctx, report_req)
+            .await
+            .map_err(|e| RpcError::Other(format!("Failed to update report in db: {e}")))?;
+        publisher.publish(ctx, &pub_msg).await?;
+
+        Ok(())
+    }
+}
+
+async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
+    let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
+    let mut query_string = String::new();
+    let scope = RequestScope {
+        jwt: Some(req.jwt.clone()),
+        ..Default::default()
+    };
+
+    //TODO: query builder function
+    // Build the query as one string so it can be executed as a transaction
+    query_string.extend(SQL_CREATE_REPORT.chars());
+    for (i, subdomain) in req.report.subdomains.iter().enumerate() {
+        let sql_create_subdomain = SQL_CREATE_SUBDOMAIN.replace("<i>", &i.to_string());
+        query_string.extend(sql_create_subdomain.chars());
+        for (j, port) in subdomain.open_ports.iter().enumerate() {
+            let sql_create_port = SQL_CREATE_PORT.replace("<j>", &j.to_string());
+            query_string.extend(sql_create_port.chars());
+        }
+        query_string.extend(SQL_ADD_PORTS_TO_SUBDOMAIN.chars());
+    }
+    query_string.extend(SQL_ADD_SUBDOMAINS_TO_REPORT.chars());
+    //TODO: setup events
+    query_string.extend(SQL_COMMIT.chars());
+
+    let bindings = vec![json!({
+        "timestamp": req.report.timestamp.as_nanos(),
+        "target": req.report.target,
+        "subdomains": req.report.subdomains
+    })
+    .to_string()];
+    let queries = vec![query_string];
+
+    let results = surreal_client
+        .query(
+            ctx,
+            &QueryRequest {
+                bindings,
+                queries,
+                scope: Some(scope),
+            },
+        )
+        .await?;
+
+    if results.iter().any(|r| !r.errors.is_empty()) {
+        Ok(WriteReportResult {
+            message: Some("Failed to write all to database".to_string()),
+            success: false,
+        })
+    } else {
+        Ok(WriteReportResult {
+            message: None,
+            success: true,
+        })
+    }
+}
+
+const SQL_BEGIN_UPDATE_REPORT: &str = r#"
+    BEGIN;
+    LET $report_id = fn::report_id($auth.id, $timestamp, $target);
+"#;
+const SQL_UPDATE_SUBDOMAIN: &str = r#"
+    LET $subdomain = $subdomains[<i>];
+    LET $subdomain_id =
+        (SELECT id FROM subdomain
+        WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+"#;
+const SQL_UPDATE_PORT: &str = r#"
+    LET $port = $subdomain.open_ports[<j>];
+    LET $port_id =
+        (SELECT id FROM port
+        WHERE subdomain = $subdomain_id AND port = $port.port).id;
+    UPDATE $port_id MERGE {
+        findings: array::concat($port_id.findings, $port.findings)
+    };
+"#;
+
+async fn update_report(
+    ctx: &Context,
+    WriteReportRequest { report, jwt }: WriteReportRequest,
+) -> Result<WriteReportResult> {
+    let surreal_client = SurrealDbSender::new();
+    //TODO: decode user_id from JWT (in orchestrator)
+    let scope = RequestScope {
+        jwt: Some(jwt),
+        ..Default::default()
+    };
+    let mut query_string = String::new();
+    query_string.extend(SQL_BEGIN_UPDATE_REPORT.chars());
+    for (i, subdomain) in report.subdomains.iter().enumerate() {
+        let sql_update_subdomains = SQL_UPDATE_SUBDOMAIN.replace("<i>", &i.to_string());
+        query_string.extend(sql_update_subdomains.chars());
+        for (j, port) in subdomain.open_ports.iter().enumerate() {
+            if !port.findings.is_empty() {
+                let sql_update_port = SQL_UPDATE_PORT.replace("<j>", &j.to_string());
+                query_string.extend(sql_update_port.chars());
+            }
+        }
+    }
+    query_string.extend(SQL_COMMIT.chars());
+
+    let bindings = vec![json!({
+        "timestamp": report.timestamp.as_nanos(),
+        "target": report.target,
+        "subdomains": report.subdomains
+    })
+    .to_string()];
+    let queries = vec![query_string];
+
+    let results = surreal_client
+        .query(
+            ctx,
+            &QueryRequest {
+                bindings,
+                queries,
+                scope: Some(scope),
+            },
+        )
+        .await?;
+
+    if results.iter().any(|r| !r.errors.is_empty()) {
+        Ok(WriteReportResult {
+            message: Some("Failed to write all to database".to_string()),
+            success: false,
+        })
+    } else {
+        Ok(WriteReportResult {
+            message: None,
+            success: true,
+        })
     }
 }
 
@@ -207,80 +343,6 @@ const SQL_ADD_SUBDOMAINS_TO_REPORT: &str = r#"
 "#;
 
 const SQL_COMMIT: &str = r#"COMMIT;"#;
-
-async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
-    let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
-    let mut query_string = String::new();
-    let scope = RequestScope {
-        jwt: Some(req.jwt.clone()),
-        ..Default::default()
-    };
-
-    // Build the query as one string so it can be executed as a transaction
-    query_string.extend(SQL_CREATE_REPORT.chars());
-    for (i, subdomain) in req.report.subdomains.iter().enumerate() {
-        let sql_create_subdomain = SQL_CREATE_SUBDOMAIN.replace("<i>", &i.to_string());
-        query_string.extend(sql_create_subdomain.chars());
-        for (j, port) in subdomain.open_ports.iter().enumerate() {
-            let sql_create_port = SQL_CREATE_PORT.replace("<j>", &j.to_string());
-            query_string.extend(sql_create_port.chars());
-        }
-        query_string.extend(SQL_ADD_PORTS_TO_SUBDOMAIN.chars());
-    }
-    query_string.extend(SQL_ADD_SUBDOMAINS_TO_REPORT.chars());
-    //TODO: setup events
-    query_string.extend(SQL_COMMIT.chars());
-
-    let bindings = vec![json!({
-        "timestamp": req.report.timestamp.as_nanos(),
-        "target": req.report.target,
-        "subdomains": req.report.subdomains
-    })
-    .to_string()];
-    let queries = vec![query_string];
-
-    let results = surreal_client
-        .query(
-            ctx,
-            &QueryRequest {
-                bindings,
-                queries,
-                scope: Some(scope),
-            },
-        )
-        .await?;
-
-    if results.iter().any(|r| !r.errors.is_empty()) {
-        Ok(WriteReportResult {
-            message: Some("Failed to write all to database".to_string()),
-            success: false,
-        })
-    } else {
-        Ok(WriteReportResult {
-            message: None,
-            success: true,
-        })
-    }
-}
-
-async fn update_report(
-    ctx: &Context,
-    WriteReportRequest { report, jwt }: WriteReportRequest,
-) -> Result<WriteReportResult> {
-    let surreal_db = SurrealDbSender::new();
-    //TODO: decode user_id from JWT (in orchestrator)
-    let scope = RequestScope {
-        jwt: Some(jwt),
-        ..Default::default()
-    };
-    let report_id = format!(
-        "{}{}{}",
-        report.user_id,
-        report.target,
-        report.timestamp.as_nanos()
-    );
-    todo!()
-}
 
 // async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
 //     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
