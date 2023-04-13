@@ -3,7 +3,9 @@ mod auth;
 use anyhow::{anyhow, Error};
 use dtbh_interface::api_gateway_prelude::*;
 use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_httpserver::{HttpRequest, HttpResponse, HttpServer, HttpServerReceiver};
+use wasmcloud_interface_httpserver::{
+    HeaderMap, HttpRequest, HttpResponse, HttpServer, HttpServerReceiver,
+};
 
 #[allow(dead_code)]
 const CALL_ALIAS: &str = "dtbh/api-gateway";
@@ -16,10 +18,11 @@ struct ApiGatewayActor {}
 enum RequestType {
     GetReports(GetReportsRequest),
     Scan(ScanRequest),
+    SignIn(auth::Credentials),
+    SignUp(auth::Credentials),
+    Auth(HeaderMap),
     Invalid(Error),
-    Unauthorised
-    //TODO: SignIn
-    //TODO: SignUp
+    Unauthorised,
 }
 
 //TODO: auth
@@ -27,25 +30,26 @@ enum RequestType {
 #[async_trait]
 impl HttpServer for ApiGatewayActor {
     async fn handle_request(&self, ctx: &Context, req: &HttpRequest) -> RpcResult<HttpResponse> {
-            match RequestType::from(req.to_owned()) {
-                RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
-                    .await
-                    .unwrap_or(HttpResponse::not_found())),
-                RequestType::Scan(scan_request) => Ok(scan(ctx, scan_request)
-                    .await
-                    .unwrap_or(HttpResponse::not_found())),
-                RequestType::Invalid(e) => {
-                    error!("{e}");
-                    Ok(HttpResponse::not_found())
-                }
-                RequestType::Unauthorised => {
-                    Ok(HttpResponse {
-                        status_code: 401,
-                        header: auth::www_auth_header(),
-                        body: vec![],
-                    })
-                }
+        match RequestType::from(req.to_owned()) {
+            RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
+                .await
+                .unwrap_or(HttpResponse::not_found())),
+            RequestType::Scan(scan_request) => Ok(scan(ctx, scan_request)
+                .await
+                .unwrap_or(HttpResponse::not_found())),
+            RequestType::SignIn(credentials) => Ok(auth::sign_in(ctx, credentials)
+                .await
+                .unwrap_or(auth::unauthorised_http_response())),
+            RequestType::SignUp(credentials) => Ok(auth::sign_up(ctx, credentials)
+                .await
+                .unwrap_or(auth::unauthorised_http_response())),
+            RequestType::Auth(headers) => todo!("Redirect to authorised page?"),
+            RequestType::Invalid(e) => {
+                error!("{e}");
+                Ok(HttpResponse::not_found())
             }
+            RequestType::Unauthorised => Ok(auth::unauthorised_http_response()),
+        }
     }
 }
 
@@ -130,9 +134,22 @@ impl From<HttpRequest> for RequestType {
                     } else {
                         Self::Unauthorised
                     }
-                },
+                }
                 Err(e) => Self::Invalid(anyhow!("Invalid body for reports request: {e}")),
             },
+            ("POST", "sign_in") => {
+                match serde_urlencoded::from_bytes::<auth::Credentials>(&req.body) {
+                    Ok(credentials) => Self::SignIn(credentials),
+                    Err(e) => Self::Invalid(anyhow!("Invalid body for sign_in request: {e}")),
+                }
+            }
+            ("POST", "sign_up") => {
+                match serde_urlencoded::from_bytes::<auth::Credentials>(&req.body) {
+                    Ok(credentials) => Self::SignUp(credentials),
+                    Err(e) => Self::Invalid(anyhow!("Invalid body for sign_up request: {e}")),
+                }
+            }
+            ("POST", "auth") => Self::Auth(req.header),
             _ => Self::Invalid(anyhow!("Invalid method or path {method}: {path}")),
         }
     }
