@@ -1,3 +1,5 @@
+![img_1.png](img_1.png)
+# Dog The Bug Hunter
 # Overview
 > Note: This is a work in progress for the Cosmonic Hackathon. It is not yet ready for production use, and probably never will be.
 > 
