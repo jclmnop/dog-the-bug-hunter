@@ -211,14 +211,14 @@ const SQL_BEGIN_UPDATE_REPORT: &str = r#"
 const SQL_UPDATE_SUBDOMAIN: &str = r#"
     LET $subdomain = $subdomains[<i>];
     LET $subdomain_id =
-        (SELECT id FROM subdomain
-        WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+        SELECT VALUE id FROM subdomain
+        WHERE subdomain = $subdomain.subdomain and report = $report_id;
 "#;
 const SQL_UPDATE_PORT: &str = r#"
     LET $port = $subdomain.open_ports[<j>];
     LET $port_id =
-        (SELECT id FROM port
-        WHERE subdomain = $subdomain_id AND port = $port.port).id;
+        SELECT VALUE id FROM port
+        WHERE subdomain = $subdomain_id AND port = $port.port;
     UPDATE $port_id MERGE {
         findings: array::concat($port_id.findings, $port.findings)
     };
@@ -299,8 +299,8 @@ const SQL_CREATE_SUBDOMAIN: &str = r#"
         open_ports = []
     };
     LET $subdomain_id =
-        (SELECT id FROM subdomain
-        WHERE subdomain = $subdomain.subdomain and report = $report_id).id;
+        SELECT VALUE id FROM subdomain
+        WHERE subdomain = $subdomain.subdomain and report = $report_id;
     UPDATE $report_id MERGE {
         subdomains: array::append($report_id.subdomains, $subdomain_id)
     };
@@ -314,8 +314,8 @@ const SQL_CREATE_PORT: &str = r#"
         port: $port.port,
     };
     LET $port_id =
-        (SELECT id FROM port
-        WHERE subdomain = $subdomain_id AND port = $port.port).id;
+        SELECT VALUE id FROM port
+        WHERE subdomain = $subdomain_id AND port = $port.port;
     UPDATE $subdomain_id MERGE {
         open_ports: array::append($subdomain_id.open_ports, $port_id)
     };
@@ -324,8 +324,8 @@ const SQL_CREATE_PORT: &str = r#"
 
 const SQL_ADD_PORTS_TO_SUBDOMAIN: &str = r#"
     LET $port_ids =
-        (SELECT id FROM port
-        WHERE subdomain = $subdomain_id).id;
+        SELECT VALUE id FROM port
+        WHERE subdomain = $subdomain_id;
     UPDATE $subdomain_id MERGE {
         open_ports: $port_ids
     };
@@ -334,8 +334,8 @@ const SQL_ADD_PORTS_TO_SUBDOMAIN: &str = r#"
 
 const SQL_ADD_SUBDOMAINS_TO_REPORT: &str = r#"
     LET $subdomain_ids =
-        (SELECT id FROM subdomain
-        WHERE report = $report_id).id;
+        SELECT VALUE id FROM subdomain
+        WHERE report = $report_id;
     UPDATE $report_id MERGE {
         subdomains: $subdomain_ids:
     };
