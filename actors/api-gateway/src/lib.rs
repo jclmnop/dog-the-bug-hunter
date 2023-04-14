@@ -31,6 +31,7 @@ enum RequestType {
 #[async_trait]
 impl HttpServer for ApiGatewayActor {
     async fn handle_request(&self, ctx: &Context, req: &HttpRequest) -> RpcResult<HttpResponse> {
+        // info!("{req:#?}");
         match RequestType::from(req.to_owned()) {
             RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
                 .await
@@ -68,8 +69,18 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
             jwt: req.jwt.clone(),
         };
         match orchestrator.run_scans(ctx, &scan_req).await {
-            Ok(success) if success => {}
-            _ => failures.push(target),
+            Ok(success) => {
+                if !success {
+                    error!("Failed to begin scan: {target}");
+                    failures.push(target)
+                }
+
+            }
+            Err(e) => {
+                error!("Failed to begin scan: {target}");
+                error!("{e}");
+                failures.push(target)
+            },
         }
     }
 

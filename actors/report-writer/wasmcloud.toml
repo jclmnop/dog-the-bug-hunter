@@ -5,7 +5,7 @@ version = "0.1.0"
 
 [actor]
 claims = ["wasmcloud:surrealdb", "wasmcloud:builtin:logging", "wasmcloud:messaging"]
-call-alias = "dtbh/report-writer"
+call_alias = "dtbh/report-writer"
 
 [rust]
 target_path = "../../target"

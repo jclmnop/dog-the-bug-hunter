@@ -20,6 +20,7 @@ struct OrchestratorActor {}
 #[async_trait]
 impl Orchestrator for OrchestratorActor {
     async fn run_scans(&self, ctx: &Context, req: &RunScansRequest) -> RpcResult<bool> {
+        info!("Requesting endpoint enumeration");
         let enumerator = EndpointEnumeratorSender::new();
         enumerator.enumerate_endpoints(ctx, &req).await?;
 

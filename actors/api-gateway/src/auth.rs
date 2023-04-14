@@ -7,8 +7,8 @@ use wasmcloud_interface_surrealdb::{AuthParams, RequestScope, SurrealDb, Surreal
 
 const WWW_AUTHENTICATE: &str = "WWW-Authenticate";
 const WWW_AUTHENTICATE_CHALLENGE: &str = "Bearer scope=\"user_scope\"";
-const AUTHORIZATION_HEADER: &str = "Authorization";
-const COOKIE_HEADER: &str = "Cookie";
+const AUTHORIZATION_HEADER: &str = "authorization";
+const COOKIE_HEADER: &str = "cookie";
 const BEARER_AUTH_SCHEME: &str = "Bearer ";
 const SET_COOKIE: &str = "Set-Cookie";
 

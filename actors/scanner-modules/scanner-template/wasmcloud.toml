@@ -5,7 +5,7 @@ version = "0.1.0"
 
 [actor]
 claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging"]
-call-alias = "dtbh/scanner/template"
+call_alias = "dtbh/scanner/template"
 
 [rust]
 target_path = "../../../target"
