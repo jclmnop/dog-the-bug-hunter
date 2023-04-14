@@ -21,6 +21,7 @@ enum RequestType {
     Scan(ScanRequest),
     SignIn(AuthParams),
     SignUp(AuthParams),
+    // TODO: LoginPage
     // Auth(HeaderMap),
     Invalid(Error),
     Unauthorised,
@@ -45,6 +46,7 @@ impl HttpServer for ApiGatewayActor {
                 .await
                 .unwrap_or(HttpResponse::internal_server_error("Error signing up"))),
             // RequestType::Auth(headers) => todo!("Redirect to authorised page?"),
+            // RequestType::LoginPage => todo!("HTML for login page")
             RequestType::Invalid(e) => {
                 error!("{e}");
                 Ok(HttpResponse::not_found())
@@ -147,6 +149,7 @@ impl From<HttpRequest> for RequestType {
                 Err(e) => Self::Invalid(anyhow!("Invalid body for sign_up request: {e}")),
             },
             // ("POST", "auth") => Self::Auth(req.header),
+            // ("GET", "sign_in") => Self::LoginPage,
             _ => Self::Invalid(anyhow!("Invalid method or path {method}: {path}")),
         }
     }
