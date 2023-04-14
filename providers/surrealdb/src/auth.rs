@@ -61,6 +61,20 @@ pub async fn sign_in(
                 client.signin(credentials).await?;
             }
             RequestScope {
+                scope_name: Some(scope),
+                auth_params: Some(params),
+                ..
+            } => {
+                let credentials = Scope {
+                    namespace: &conf.default_namespace,
+                    database: &conf.default_database,
+                    scope,
+                    params,
+                };
+                // client.use_ns(namespace).use_db(database).await?;
+                client.signin(credentials).await?;
+            }
+            RequestScope {
                 auth_params: Some(AuthParams { username, password }),
                 ..
             } => {

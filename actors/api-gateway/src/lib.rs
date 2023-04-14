@@ -6,6 +6,7 @@ use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_httpserver::{
     HeaderMap, HttpRequest, HttpResponse, HttpServer, HttpServerReceiver,
 };
+use wasmcloud_interface_surrealdb::AuthParams;
 
 #[allow(dead_code)]
 const CALL_ALIAS: &str = "dtbh/api-gateway";
@@ -14,13 +15,13 @@ const CALL_ALIAS: &str = "dtbh/api-gateway";
 #[services(Actor, HttpServer)]
 struct ApiGatewayActor {}
 
-//TODO: UI request for '/' path
+//TODO: UI request for '/' path?
 enum RequestType {
     GetReports(GetReportsRequest),
     Scan(ScanRequest),
-    SignIn(auth::Credentials),
-    SignUp(auth::Credentials),
-    Auth(HeaderMap),
+    SignIn(AuthParams),
+    SignUp(AuthParams),
+    // Auth(HeaderMap),
     Invalid(Error),
     Unauthorised,
 }
@@ -39,16 +40,16 @@ impl HttpServer for ApiGatewayActor {
                 .unwrap_or(HttpResponse::not_found())),
             RequestType::SignIn(credentials) => Ok(auth::sign_in(ctx, credentials)
                 .await
-                .unwrap_or(auth::unauthorised_http_response())),
+                .unwrap_or(HttpResponse::internal_server_error("Error signing in"))),
             RequestType::SignUp(credentials) => Ok(auth::sign_up(ctx, credentials)
                 .await
-                .unwrap_or(auth::unauthorised_http_response())),
-            RequestType::Auth(headers) => todo!("Redirect to authorised page?"),
+                .unwrap_or(HttpResponse::internal_server_error("Error signing up"))),
+            // RequestType::Auth(headers) => todo!("Redirect to authorised page?"),
             RequestType::Invalid(e) => {
                 error!("{e}");
                 Ok(HttpResponse::not_found())
             }
-            RequestType::Unauthorised => Ok(auth::unauthorised_http_response()),
+            RequestType::Unauthorised => Ok(auth::unauthorised_http_response(None)),
         }
     }
 }
@@ -137,19 +138,15 @@ impl From<HttpRequest> for RequestType {
                 }
                 Err(e) => Self::Invalid(anyhow!("Invalid body for reports request: {e}")),
             },
-            ("POST", "sign_in") => {
-                match serde_urlencoded::from_bytes::<auth::Credentials>(&req.body) {
-                    Ok(credentials) => Self::SignIn(credentials),
-                    Err(e) => Self::Invalid(anyhow!("Invalid body for sign_in request: {e}")),
-                }
-            }
-            ("POST", "sign_up") => {
-                match serde_urlencoded::from_bytes::<auth::Credentials>(&req.body) {
-                    Ok(credentials) => Self::SignUp(credentials),
-                    Err(e) => Self::Invalid(anyhow!("Invalid body for sign_up request: {e}")),
-                }
-            }
-            ("POST", "auth") => Self::Auth(req.header),
+            ("POST", "sign_in") => match serde_urlencoded::from_bytes::<AuthParams>(&req.body) {
+                Ok(credentials) => Self::SignIn(credentials),
+                Err(e) => Self::Invalid(anyhow!("Invalid body for sign_in request: {e}")),
+            },
+            ("POST", "sign_up") => match serde_urlencoded::from_bytes::<AuthParams>(&req.body) {
+                Ok(credentials) => Self::SignUp(credentials),
+                Err(e) => Self::Invalid(anyhow!("Invalid body for sign_up request: {e}")),
+            },
+            // ("POST", "auth") => Self::Auth(req.header),
             _ => Self::Invalid(anyhow!("Invalid method or path {method}: {path}")),
         }
     }
