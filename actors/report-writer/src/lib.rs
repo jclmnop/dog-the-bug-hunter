@@ -166,9 +166,7 @@ async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteRepo
             let sql_create_port = SQL_CREATE_PORT.replace("<j>", &j.to_string());
             query_string.extend(sql_create_port.chars());
         }
-        query_string.extend(SQL_ADD_PORTS_TO_SUBDOMAIN.chars());
     }
-    query_string.extend(SQL_ADD_SUBDOMAINS_TO_REPORT.chars());
     //TODO: setup events
     query_string.extend(SQL_COMMIT.chars());
 
@@ -203,26 +201,6 @@ async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteRepo
         })
     }
 }
-
-const SQL_BEGIN_UPDATE_REPORT: &str = r#"
-    BEGIN;
-    LET $report_id = fn::report_id($auth.id, $timestamp, $target);
-"#;
-const SQL_UPDATE_SUBDOMAIN: &str = r#"
-    LET $subdomain = $subdomains[<i>];
-    LET $subdomain_id =
-        SELECT VALUE id FROM subdomain
-        WHERE subdomain = $subdomain.subdomain and report = $report_id;
-"#;
-const SQL_UPDATE_PORT: &str = r#"
-    LET $port = $subdomain.open_ports[<j>];
-    LET $port_id =
-        SELECT VALUE id FROM port
-        WHERE subdomain = $subdomain_id AND port = $port.port;
-    UPDATE $port_id MERGE {
-        findings: array::concat($port_id.findings, $port.findings)
-    };
-"#;
 
 async fn update_report(
     ctx: &Context,
@@ -301,10 +279,7 @@ const SQL_CREATE_SUBDOMAIN: &str = r#"
     LET $subdomain_id =
         SELECT VALUE id FROM subdomain
         WHERE subdomain = $subdomain.subdomain and report = $report_id;
-    UPDATE $report_id MERGE {
-        subdomains: array::append($report_id.subdomains, $subdomain_id)
-    };
-
+    UPDATE $report_id SET subdomains += $subdomain_id;
 "#;
 
 const SQL_CREATE_PORT: &str = r#"
@@ -316,30 +291,25 @@ const SQL_CREATE_PORT: &str = r#"
     LET $port_id =
         SELECT VALUE id FROM port
         WHERE subdomain = $subdomain_id AND port = $port.port;
-    UPDATE $subdomain_id MERGE {
-        open_ports: array::append($subdomain_id.open_ports, $port_id)
-    };
-
+    UPDATE $subdomain_id SET open_ports += $port_id;
 "#;
 
-const SQL_ADD_PORTS_TO_SUBDOMAIN: &str = r#"
-    LET $port_ids =
-        SELECT VALUE id FROM port
-        WHERE subdomain = $subdomain_id;
-    UPDATE $subdomain_id MERGE {
-        open_ports: $port_ids
-    };
-
+const SQL_BEGIN_UPDATE_REPORT: &str = r#"
+    BEGIN;
+    LET $report_id = fn::report_id($auth.id, $timestamp, $target);
 "#;
-
-const SQL_ADD_SUBDOMAINS_TO_REPORT: &str = r#"
-    LET $subdomain_ids =
+const SQL_UPDATE_SUBDOMAIN: &str = r#"
+    LET $subdomain = $subdomains[<i>];
+    LET $subdomain_id =
         SELECT VALUE id FROM subdomain
-        WHERE report = $report_id;
-    UPDATE $report_id MERGE {
-        subdomains: $subdomain_ids:
-    };
-
+        WHERE subdomain = $subdomain.subdomain and report = $report_id;
+"#;
+const SQL_UPDATE_PORT: &str = r#"
+    LET $port = $subdomain.open_ports[<j>];
+    LET $port_id =
+        SELECT VALUE id FROM port
+        WHERE subdomain = $subdomain_id AND port = $port.port;
+    UPDATE $port_id SET findings += $port.findings;
 "#;
 
 const SQL_COMMIT: &str = r#"COMMIT;"#;
