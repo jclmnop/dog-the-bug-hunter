@@ -107,20 +107,32 @@ pub async fn sign_in(
     Ok(())
 }
 
-pub fn to_scope(req_scope: &RequestScope) -> Result<Scope<AuthParams>> {
+pub fn to_scope<'a>(req_scope: &'a RequestScope, conf: &'a LinkConfig) -> Result<Scope<'a, AuthParams>> {
     match req_scope {
         RequestScope {
             auth_params: Some(params),
-            database: Some(database),
-            namespace: Some(namespace),
+            database,
+            namespace,
             scope_name: Some(scope),
             ..
-        } => Ok(Scope {
-            namespace,
-            database,
-            scope,
-            params: params.to_owned(),
-        }),
+        } =>{
+            let namespace = if let Some(namespace) = namespace {
+                namespace
+            } else {
+                &conf.default_namespace
+            };
+            let database = if let Some(database) = database {
+                database
+            } else {
+                &conf.default_database
+            };
+            Ok(Scope {
+                namespace,
+                database,
+                scope,
+                params: params.to_owned(),
+            })
+        }
         _ => Err(anyhow!("Invalid user scope.")),
     }
 }

@@ -5,13 +5,13 @@ members = [
   "./actors/report-writer",
   "./actors/api-gateway",
   "./interfaces/*/rust",
-  "./providers/endpoint-enumerator",
+#  "./providers/endpoint-enumerator",
 ]
 exclude = [
   "./providers/sleepy",
   "./interfaces/surrealdb/rust",
   "./providers/surrealdb/",
-#  "./providers/endpoint-enumerator",
+  "./providers/endpoint-enumerator",
 ]
 default-members = [
   "./actors/scanner-modules/*",

@@ -1,4 +1,5 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use serde_json::json;
 use wasmbus_rpc::actor::prelude::WasmHost;
 use wasmbus_rpc::common::Context;
 use wasmcloud_interface_httpserver::{HeaderMap, HttpResponse};
@@ -39,6 +40,7 @@ pub fn get_jwt_from_headers(headers: &HeaderMap) -> Option<String> {
 fn get_jwt_from_cookies(headers: &HeaderMap) -> Option<String> {
     let cookies = headers.get(COOKIE_HEADER)?;
     for cookie in cookies {
+        // let cookie = std::str::from_utf8(cookie.as_bytes()).ok()?;
         if cookie.contains("jwt=") {
             return Some(cookie.trim_start_matches("jwt=").into());
         }
@@ -74,6 +76,11 @@ pub async fn sign_in(ctx: &Context, credentials: AuthParams) -> Result<HttpRespo
 }
 
 pub async fn sign_up(ctx: &Context, credentials: AuthParams) -> Result<HttpResponse> {
+    if credentials.password.is_empty() || credentials.username.is_empty() {
+        return Ok(unauthorised_http_response(Some(serde_json::to_vec(
+            &json!({"msg": "username or password is empty"}),
+        )?)));
+    }
     let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
     let scope = RequestScope {
         auth_params: Some(credentials),

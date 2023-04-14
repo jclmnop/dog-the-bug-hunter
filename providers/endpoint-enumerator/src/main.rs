@@ -151,7 +151,7 @@ impl EndpointEnumeratorProvider {
 
     async fn process_request(req: &RunScansRequest) -> EnumerateEndpointsResponse {
         let url = req.target.as_str();
-        let user_id = req.user_id.to_owned();
+        let jwt = req.jwt.to_owned();
         info!("Enumerating endpoints for {}", url);
         let timestamp = Timestamp::now();
         let subdomains = match Self::enumerate_subdomains(url).await {
@@ -164,7 +164,7 @@ impl EndpointEnumeratorProvider {
                     success: false,
                     target: req.target.clone(),
                     timestamp,
-                    user_id,
+                    jwt,
                 };
             }
         };
@@ -179,7 +179,7 @@ impl EndpointEnumeratorProvider {
                     success: false,
                     target: req.target.clone(),
                     timestamp,
-                    user_id,
+                    jwt,
                 };
             }
         };
@@ -191,7 +191,7 @@ impl EndpointEnumeratorProvider {
             subdomains: Some(subdomains),
             success: true,
             timestamp,
-            user_id,
+            jwt,
             target: req.target.clone(),
         }
     }

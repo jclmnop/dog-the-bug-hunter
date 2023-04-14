@@ -4,7 +4,7 @@ type = "actor"
 version = "0.1.0"
 
 [actor]
-claims = ["jclmnop:orchestrator", "wasmcloud:builtin:logging", "wasmcloud:messaging", "jclmnop:endpoint_enumerator_callback"]
+claims = ["jclmnop:orchestrator", "wasmcloud:builtin:logging", "wasmcloud:messaging", "jclmnop:endpoint_enumerator_callback", "jclmnop:endpoint_enumerator"]
 call-alias = "dtbh/orchestrator"
 
 [rust]

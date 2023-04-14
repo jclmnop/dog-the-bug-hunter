@@ -2,10 +2,9 @@ mod auth;
 
 use anyhow::{anyhow, Error};
 use dtbh_interface::api_gateway_prelude::*;
+use dtbh_interface::{ORCHESTRATOR_ACTOR, REPORT_WRITER_ACTOR};
 use wasmbus_rpc::actor::prelude::*;
-use wasmcloud_interface_httpserver::{
-    HeaderMap, HttpRequest, HttpResponse, HttpServer, HttpServerReceiver,
-};
+use wasmcloud_interface_httpserver::{HttpRequest, HttpResponse, HttpServer, HttpServerReceiver};
 use wasmcloud_interface_surrealdb::AuthParams;
 
 #[allow(dead_code)]
@@ -58,7 +57,7 @@ impl HttpServer for ApiGatewayActor {
 
 async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
     debug!("Scan request: {:#?}", req);
-    let orchestrator: OrchestratorSender<_> = OrchestratorSender::to_actor("dtbh/orchestrator");
+    let orchestrator: OrchestratorSender<_> = OrchestratorSender::to_actor(ORCHESTRATOR_ACTOR);
     let targets = req.targets;
     let mut failures: Vec<String> = vec![];
 
@@ -86,7 +85,7 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
 }
 
 async fn get_reports(ctx: &Context, req: GetReportsRequest) -> RpcResult<HttpResponse> {
-    let report_writer: ReportWriterSender<_> = ReportWriterSender::to_actor("dtbh/report-writer");
+    let report_writer: ReportWriterSender<_> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
     match report_writer.get_reports(ctx, &req).await {
         Ok(reports_result) => match reports_result.result() {
             Ok(reports) => {
@@ -140,11 +139,11 @@ impl From<HttpRequest> for RequestType {
                 }
                 Err(e) => Self::Invalid(anyhow!("Invalid body for reports request: {e}")),
             },
-            ("POST", "sign_in") => match serde_urlencoded::from_bytes::<AuthParams>(&req.body) {
+            ("POST", "sign_in") => match serde_json::from_slice::<AuthParams>(&req.body) {
                 Ok(credentials) => Self::SignIn(credentials),
                 Err(e) => Self::Invalid(anyhow!("Invalid body for sign_in request: {e}")),
             },
-            ("POST", "sign_up") => match serde_urlencoded::from_bytes::<AuthParams>(&req.body) {
+            ("POST", "sign_up") => match serde_json::from_slice::<AuthParams>(&req.body) {
                 Ok(credentials) => Self::SignUp(credentials),
                 Err(e) => Self::Invalid(anyhow!("Invalid body for sign_up request: {e}")),
             },

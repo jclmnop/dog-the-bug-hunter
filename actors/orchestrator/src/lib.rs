@@ -6,7 +6,7 @@ use dtbh_interface::endpoint_enumerator::{
 use dtbh_interface::orchestrator::RunScansRequest;
 use dtbh_interface::orchestrator_prelude::*;
 use dtbh_interface::scanner_prelude::ScanEndpointParams;
-use dtbh_interface::TASKS_TOPIC;
+use dtbh_interface::{REPORT_WRITER_ACTOR, TASKS_TOPIC};
 use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_messaging::{Messaging, MessagingSender, PubMessage};
 
@@ -32,17 +32,21 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
     async fn enumerate_endpoints_callback(
         &self,
         ctx: &Context,
-        req: &EnumerateEndpointsResponse,
+        resp: &EnumerateEndpointsResponse,
     ) -> RpcResult<()> {
-        info!("Received callback from endpoint enumerator: {:?}", req);
-        if let Some(subdomains) = &req.subdomains {
+        info!(
+            "Received callback from endpoint enumerator: {:?}",
+            resp.target
+        );
+        let report_writer_sender = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
+        if let Some(subdomains) = &resp.subdomains {
             for subdomain in subdomains {
                 let params = ScanEndpointParams {
                     subdomain: subdomain.clone(),
                     user_agent_tag: None,
-                    jwt: req.jwt.clone(),
-                    timestamp: req.timestamp.clone(),
-                    target: req.target.clone(),
+                    jwt: resp.jwt.clone(),
+                    timestamp: resp.timestamp.clone(),
+                    target: resp.target.clone(),
                 };
                 match serde_json::to_vec(&params) {
                     Ok(body) => {

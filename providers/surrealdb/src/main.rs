@@ -147,7 +147,8 @@ impl SurrealDb for SurrealDbProvider {
 
     async fn sign_up(&self, ctx: &Context, req: &RequestScope) -> RpcResult<SignUpResponse> {
         let client = self.get_client(ctx).await?;
-        let scope = to_scope(req).map_err(|e| RpcError::InvalidParameter(e.to_string()))?;
+        let config = self.get_config(ctx).await?;
+        let scope = to_scope(req, &config).map_err(|e| RpcError::InvalidParameter(e.to_string()))?;
         Ok(match client.signup(scope).await {
             Ok(token) => match serde_json::to_string(&token) {
                 Ok(token) => SignUpResponse {
@@ -177,7 +178,8 @@ impl SurrealDb for SurrealDbProvider {
 
     async fn sign_in(&self, ctx: &Context, req: &RequestScope) -> RpcResult<SignInResponse> {
         let client = self.get_client(ctx).await?;
-        let scope = to_scope(req).map_err(|e| RpcError::InvalidParameter(e.to_string()))?;
+        let config = self.get_config(ctx).await?;
+        let scope = to_scope(req, &config).map_err(|e| RpcError::InvalidParameter(e.to_string()))?;
         Ok(match client.signin(scope).await {
             Ok(token) => match serde_json::to_string(&token) {
                 Ok(token) => SignInResponse {

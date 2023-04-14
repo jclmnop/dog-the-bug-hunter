@@ -4,6 +4,7 @@ use dtbh_interface::scanner_prelude::*;
 use dtbh_interface::{GetReportsRequest, GetReportsResult, WriteReportRequest};
 use serde_json::json;
 use wasmbus_rpc::Timestamp;
+use wasmcloud_interface_logging::error;
 use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
@@ -139,9 +140,9 @@ impl MessageSubscriber for ReportActor {
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
 
-        update_report(ctx, report_req)
-            .await
-            .map_err(|e| RpcError::Other(format!("Failed to update report in db: {e}")))?;
+        if let Err(e) = update_report(ctx, report_req).await {
+            error!("Failed to write report: {e}")
+        }
         publisher.publish(ctx, &pub_msg).await?;
 
         Ok(())

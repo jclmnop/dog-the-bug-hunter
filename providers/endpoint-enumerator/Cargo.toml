@@ -33,5 +33,5 @@ env_logger = "0.10.0"
 wasmbus-rpc = "0.12.0"
 
 [[bin]]
-name = "wasmcloud-provider-endpoint_enumerator"
+name = "wasmcloud-provider-endpoint-enumerator"
 path = "src/main.rs"

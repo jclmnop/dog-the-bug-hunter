@@ -59,24 +59,23 @@ providers to the super-constellation, on any cloud provider.
 - [ ] Test scaling on Railway/Digital Ocean
 - [ ] Refactor interfaces
   - [ ] remove some "services"
-  - [x] merge endpoint-enuemrator interface with dtbh interface
-- [x] **No I don't. Although there is a timeout error if `handle_message()` takes more 
-      than 2 seconds, the method still fully executes, so I'll just need to filter out the tracing logs later on**
-      ~~do i need to build a "middle-manager" provider to split up the work of the vulnerability scanning actors to get
-      round the 2 second RPC timeout?~~ 
-  - [ ] ~~orchestrator splits job into chunks of 10 or so, converts to an array of NATS `PubMessage`s~~
-  - [ ] ~~send array to middle manager, along with a specified delay (default 500ms maybe) and an array of NATS topics to publish to~~
-  - [ ] ~~middle manager spawns a task~~
-    - [ ] ~~publishes each NATS message to all the topics with the specified delay between each one~~
+  - [x] merge endpoint-enumerator interface with dtbh interface
+- [ ] CLI
+  - [ ] wrappers for all api requests
+    - [ ] get_reports
+    - [ ] sign_up
+    - [ ] sign_in
+    - [ ] scan
+  - [ ] connect to surrealDB websocket for new events
 
 ### Actors
 #### api-gateway
 - [x] handle POST request to /scan
 - [x] handle POST request to /reports (POST bc it will require auth)
-- [ ] very basic auth for testing (surrealDB)
-  - [ ] sign up
-  - [ ] sign in
-  - [ ] JWT auth token + decode userID
+- [x] very basic auth for testing (surrealDB)
+  - [x] sign up
+  - [x] sign in
+  - [x] JWT auth token
 - [ ] improve error handling
 #### report-writer
 - [x] Implement message subscription for vulnerability scanner results 
@@ -104,7 +103,6 @@ providers to the super-constellation, on any cloud provider.
 #### SurrealDB
 - [x] simple functions
   - [x] query
-  - [ ] execute?
   - [x] signup
   - [x] signin
 #### "wasmcloud:timing" interface + provider
@@ -114,18 +112,16 @@ providers to the super-constellation, on any cloud provider.
 
 ## Nice to haves
 - [ ] Open telemetry
-- [ ] User authentication + session tokens
+- [ ] proper session tokens rather than storing JWT in headers/cookies
 - [ ] Front end for login + submitting targets
 - [ ] Front end for viewing reports 
 - [ ] notifications/emails when reports are ready for a specific vulnerability scanner
 - [ ] deploy script
-- [ ] It would probably make more sense to use Postgres instead of KV storage for reports, but currently limited
-      to only 5 providers on a managed cosmonic host during dev preview; KV storage will have to do for proof of concept.
 - [ ] Figure out optimal concurrency values for endpoint enumerator provider
 - [ ] Trim down the list of ports, or add a config for endpoint enumerator provider
 - [ ] Test scalability with a separate containerised deployment on Railway and Digital Ocean 
       (extra providers on Digital Ocean, extra actors on Railway?)
-- [ ] Encrypt report data in KV storage + store user private keys in vault
+- [ ] Encrypt report data + store user private keys in vault
 - [ ] customisable wordlists stored in user-specific KV storage
 - [ ] blind TRUE/FALSE SQLi
-- [ ] blind sleep based SQLi
+- [ ] blind sleep/time based SQLi

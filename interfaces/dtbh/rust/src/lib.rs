@@ -15,6 +15,9 @@ pub use api::*;
 pub const TASKS_TOPIC: &str = "dtbh.tasks";
 pub const PUB_RESULTS_TOPIC: &str = "dtbh.reports.in";
 
+pub const ORCHESTRATOR_ACTOR: &str = "dtbh/orchestrator";
+pub const REPORT_WRITER_ACTOR: &str = "dtbh/report-writer";
+
 // #[cfg(all(feature = "actor", target_arch = "wasm32"))]
 #[cfg(feature = "actor")]
 pub mod scanner_prelude {

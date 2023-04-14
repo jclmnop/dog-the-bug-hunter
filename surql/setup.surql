@@ -4,8 +4,7 @@ DEFINE FUNCTION fn::report_id($token_id: string, $timestamp: int, $target: strin
     RETURN type::thing(
         "report",
         crypto::md5(string::concat($token_id, $timestamp, $target))
-);}
-
+);};
 DEFINE FUNCTION fn::report_exists($report_id: record()) {
     RETURN $report_id IN (SELECT id FROM report).id;
 };
@@ -58,8 +57,6 @@ DEFINE FIELD port ON TABLE port TYPE int
     ASSERT $value != NONE;
 DEFINE FIELD findings ON TABLE port TYPE array
     VALUE $value OR [];
-DEFINE FIELD is_open ON TABLE port TYPE boolean
+DEFINE FIELD is_open ON TABLE port TYPE bool
     VALUE $value OR true;
 DEFINE FIELD findings.* ON TABLE port TYPE object;
-
--- TODO: define events
