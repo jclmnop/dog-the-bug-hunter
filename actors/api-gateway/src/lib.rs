@@ -97,6 +97,7 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
 
 async fn get_reports(ctx: &Context, req: GetReportsRequest) -> RpcResult<HttpResponse> {
     let report_writer: ReportWriterSender<_> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
+    info!("{req:#?}");
     match report_writer.get_reports(ctx, &req).await {
         Ok(reports_result) => match reports_result.result() {
             Ok(reports) => {
@@ -139,7 +140,7 @@ impl From<HttpRequest> for RequestType {
                 }
                 Err(e) => Self::Invalid(anyhow!("Invalid body for scan request: {e}")),
             },
-            ("POST", "reports") => match serde_json::from_slice::<GetReportsRequest>(&req.body) {
+            ("GET", "reports") => match serde_json::from_slice::<GetReportsRequest>(&req.body) {
                 Ok(mut reports_request) => {
                     if let Some(jwt) = auth::get_jwt_from_headers(&req.header) {
                         reports_request.jwt = jwt;

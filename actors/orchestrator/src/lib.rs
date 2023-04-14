@@ -6,7 +6,7 @@ use dtbh_interface::endpoint_enumerator::{
 use dtbh_interface::orchestrator::RunScansRequest;
 use dtbh_interface::orchestrator_prelude::*;
 use dtbh_interface::scanner_prelude::ScanEndpointParams;
-use dtbh_interface::{REPORT_WRITER_ACTOR, TASKS_TOPIC};
+use dtbh_interface::{REPORT_WRITER_ACTOR, ReportWriter, TASKS_TOPIC, WriteReportRequest};
 use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_messaging::{Messaging, MessagingSender, PubMessage};
 
@@ -39,8 +39,17 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
             "Received callback from endpoint enumerator: {:?}",
             resp.target
         );
-        let report_writer_sender = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
         if let Some(subdomains) = &resp.subdomains {
+            let report_writer_sender: ReportWriterSender<WasmHost> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
+            let write_result = report_writer_sender.write_report(ctx, &WriteReportRequest {
+                jwt: resp.jwt.to_string(),
+                report: Report {
+                    subdomains: subdomains.to_owned(),
+                    target: resp.target.to_owned(),
+                    timestamp: resp.timestamp.to_owned(),
+                    user_id: "".to_string()  //TODO: remove this field,
+                },
+            }).await?;
             for subdomain in subdomains {
                 let params = ScanEndpointParams {
                     subdomain: subdomain.clone(),

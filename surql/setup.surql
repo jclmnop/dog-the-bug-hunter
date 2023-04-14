@@ -1,6 +1,6 @@
 -- Setup
 -- -- Functions
-DEFINE FUNCTION fn::report_id($token_id: string, $timestamp: int, $target: string) {
+DEFINE FUNCTION fn::report_id($token_id: record(), $timestamp: int, $target: string) {
     RETURN type::thing(
         "report",
         crypto::md5(string::concat($token_id, $timestamp, $target))
@@ -8,7 +8,17 @@ DEFINE FUNCTION fn::report_id($token_id: string, $timestamp: int, $target: strin
 DEFINE FUNCTION fn::report_exists($report_id: record()) {
     RETURN $report_id IN (SELECT id FROM report).id;
 };
+DEFINE FUNCTION fn::datetime_from_ns($ns: int) {
+    RETURN type::datetime('1970-01-01T00:00:00Z') + type::duration(string::concat($ns, "ns"))
+};
+
+DEFINE FUNCTION fn::to_timestamp($in: datetime) { RETURN {sec: time::unix($in), nsec: 0 } };
 -- -- Scopes
+DEFINE TABLE user SCHEMALESS
+    PERMISSIONS
+        FOR select WHERE id = $auth.id
+        FOR update, delete, create NONE;
+
 DEFINE SCOPE user_scope
 SESSION 14d
 SIGNUP (
@@ -23,8 +33,10 @@ SIGNIN (
 -- -- -- Report Table
 DEFINE TABLE report SCHEMAFULL
     PERMISSIONS
-        FOR select, create, update, delete
-        WHERE user = $token.id AND $scope = "user_scope";
+        FOR create
+            WHERE $scope = "user_scope"
+        FOR select, update, delete
+            WHERE user = $auth.id AND $scope = "user_scope";
 DEFINE FIELD user ON TABLE report TYPE record (user)
     ASSERT $value != NONE;
 DEFINE FIELD target ON TABLE report TYPE string
@@ -37,8 +49,10 @@ DEFINE FIELD subdomains.* ON TABLE report TYPE record (subdomain);
 
 DEFINE TABLE subdomain SCHEMAFULL
     PERMISSIONS
-        FOR select, create, update, delete
-        WHERE report.user = $token.id AND $scope = "user_scope";
+        FOR create
+            WHERE $scope = "user_scope"
+        FOR select, update, delete
+            WHERE report.user = $auth.id AND $scope = "user_scope";
 DEFINE FIELD report ON TABLE subdomain TYPE record (report)
     ASSERT $value != NONE AND fn::report_exists($value);
 DEFINE FIELD subdomain_url ON TABLE subdomain TYPE string
@@ -49,8 +63,10 @@ DEFINE FIELD ports.* ON TABLE subdomain TYPE record (port);
 
 DEFINE TABLE port SCHEMAFULL
     PERMISSIONS
-        FOR select, create, update, delete
-        WHERE subdomain.report.user = $token.id AND $scope = "user_scope";
+        FOR create
+            WHERE $scope = "user_scope"
+        FOR select, update, delete
+            WHERE subdomain.report.user = $auth.id AND $scope = "user_scope";
 DEFINE FIELD subdomain ON TABLE port TYPE record (subdomain)
     ASSERT $value != NONE;
 DEFINE FIELD port ON TABLE port TYPE int

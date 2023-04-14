@@ -4,8 +4,8 @@ type = "actor"
 version = "0.1.0"
 
 [actor]
-claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging"]
-call_alias = "dtbh/scanner/dotenv-disclosure"
+claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging", "wasmcloud:messaging"]
+call_alias = "dtbh/scanner/dotenvdisclosure"
 
 [rust]
 target_path = "../../../target"

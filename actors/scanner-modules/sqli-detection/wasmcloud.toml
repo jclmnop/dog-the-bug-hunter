@@ -4,8 +4,8 @@ type = "actor"
 version = "0.1.0"
 
 [actor]
-claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging"]
-call_alias = "dtbh/scanner/sqli-detection"
+claims = ["wasmcloud:httpclient", "wasmcloud:builtin:logging", "wasmcloud:messaging"]
+call_alias = "dtbh/scanner/sqlidetection"
 
 [rust]
 target_path = "../../../target"

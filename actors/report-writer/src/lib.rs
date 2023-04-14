@@ -46,22 +46,29 @@ impl ReportWriter for ReportActor {
             ..Default::default()
         };
         let mut sql = r#"
-            SELECT * FROM report WHERE
+            SELECT *, fn::to_timestamp(timestamp) AS timestamp FROM report WHERE user = $auth.id AND
         "#
         .to_string();
         if !req.target.is_empty() {
             sql.extend("target INSIDE $targets AND ".chars());
+        } else {
+            info!("No targets selected, fetching all");
         }
-        sql.extend("timestamp >= <datetime> $start AND timestamp <= <datetime> $end ".chars());
+        sql.extend("timestamp >= fn::datetime_from_ns($start) AND ".chars());
+        if req.end_timestamp.is_some() {
+            sql.extend("timestamp <= fn::datetime_from_ns($end) ".chars());
+        } else {
+            sql.extend("timestamp <= time::now() ".chars());
+        }
         sql.extend("FETCH subdomains, subdomains.open_ports;".chars());
         let start_timestamp = req
             .start_timestamp
-            .unwrap_or(Timestamp::new(0, 0)?)
+            .unwrap_or(Timestamp::new(1681490325, 0)?)
             .as_nanos();
         let end_timestamp = if req.end_timestamp.is_some() {
             req.end_timestamp.unwrap().as_nanos()
         } else {
-            u128::MAX
+            u128::default()
         };
         let bindings = vec![json!({
             "start": start_timestamp,
@@ -82,6 +89,7 @@ impl ReportWriter for ReportActor {
 
         Ok(match result {
             Ok(result) => {
+                info!("{} responses", result.len());
                 if result.iter().any(|r| !r.errors.is_empty()) {
                     GetReportsResult {
                         reason: Some("Error retrieving report(s)".to_string()),
@@ -96,19 +104,24 @@ impl ReportWriter for ReportActor {
                     let response_ser = result.first().unwrap_or(&default_reponse);
                     let mut reports: Vec<Report> = vec![];
                     for report_ser in &response_ser.response {
-                        match serde_json::from_slice(&report_ser) {
-                            Ok(report) => {
-                                reports.push(report);
-                            }
-                            Err(e) => {
-                                return Ok(GetReportsResult {
-                                    reason: Some(format!("Failed to deserialise reports: {e}")),
-                                    reports: None,
-                                    success: false,
-                                })
+                        let report_utf8 = std::str::from_utf8(report_ser).unwrap_or("{}");
+                        info!("{report_utf8:#?}");
+                        if report_utf8 != "[]" {
+                            match serde_json::from_slice::<Vec<Report>>(&report_ser) {
+                                Ok(report) => {
+                                    reports.extend_from_slice(&report);
+                                }
+                                Err(e) => {
+                                    return Ok(GetReportsResult {
+                                        reason: Some(format!("Failed to deserialise reports: {e}")),
+                                        reports: None,
+                                        success: false,
+                                    })
+                                }
                             }
                         }
                     }
+                    info!("{reports:#?}");
                     GetReportsResult {
                         reason: None,
                         reports: Some(reports),
@@ -226,7 +239,6 @@ async fn update_report(
         }
     }
     query_string.extend(SQL_COMMIT.chars());
-
     let bindings = vec![json!({
         "timestamp": report.timestamp.as_nanos(),
         "target": report.target,
@@ -264,7 +276,8 @@ const SQL_CREATE_REPORT: &str = r#"
     LET $report_id = fn::report_id($auth.id, $timestamp, $target);
     CREATE $report_id CONTENT {
         user: $auth.id,
-        timestamp: <datetime> $timestamp,
+        timestamp: fn::datetime_from_ns($timestamp),
+        target: $target,
         subdomains: []
     };
 
