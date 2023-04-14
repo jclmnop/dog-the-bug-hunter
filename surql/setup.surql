@@ -40,7 +40,7 @@ DEFINE TABLE report SCHEMAFULL
 DEFINE FIELD user ON TABLE report TYPE record (user)
     ASSERT $value != NONE;
 DEFINE FIELD target ON TABLE report TYPE string
-    ASSERT $value != NONE AND is::url($value);
+    ASSERT $value != NONE;
 DEFINE FIELD timestamp ON TABLE report TYPE datetime
     ASSERT $value != NONE;
 DEFINE FIELD subdomains ON TABLE report TYPE array
@@ -55,8 +55,8 @@ DEFINE TABLE subdomain SCHEMAFULL
             WHERE report.user = $auth.id AND $scope = "user_scope";
 DEFINE FIELD report ON TABLE subdomain TYPE record (report)
     ASSERT $value != NONE AND fn::report_exists($value);
-DEFINE FIELD subdomain_url ON TABLE subdomain TYPE string
-    ASSERT $value != NONE AND is::url($value);
+DEFINE FIELD subdomain ON TABLE subdomain TYPE string
+    ASSERT $value != NONE;
 DEFINE FIELD ports ON TABLE subdomain TYPE array
     VALUE $value OR [];
 DEFINE FIELD ports.* ON TABLE subdomain TYPE record (port);

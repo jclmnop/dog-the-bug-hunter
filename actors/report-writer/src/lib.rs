@@ -9,7 +9,7 @@ use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
 use wasmcloud_interface_surrealdb::{
-    Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbSender,
+    Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbSender, SurrealDbErrors
 };
 
 const CALL_ALIAS: &str = "dtbh/report-writer";
@@ -26,13 +26,16 @@ impl ReportWriter for ReportActor {
         ctx: &Context,
         req: &WriteReportRequest,
     ) -> RpcResult<WriteReportResult> {
-        match new_report(ctx, req).await {
-            Ok(write_report_result) => Ok(write_report_result),
-            Err(e) => Ok(WriteReportResult {
-                message: Some(format!("Error creating new report: {e}")),
-                success: false,
-            }),
-        }
+        info!("Writing new report for {}", req.report.target);
+        info!("{:#?}", req.report);
+        new_report(ctx, req).await.map_err(|e| RpcError::Other(format!("Failed to create new report: {e}")))
+        // match new_report(ctx, req).await {
+        //     Ok(write_report_result) => Ok(write_report_result),
+        //     Err(e) => Ok(WriteReportResult {
+        //         message: Some(format!("Error creating new report: {e}")),
+        //         success: false,
+        //     }),
+        // }
     }
 
     async fn get_reports(
@@ -204,10 +207,7 @@ async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteRepo
         .await?;
 
     if results.iter().any(|r| !r.errors.is_empty()) {
-        Ok(WriteReportResult {
-            message: Some("Failed to write all to database".to_string()),
-            success: false,
-        })
+        Err(anyhow!("{:#?}", results.iter().map(|r| r.errors.clone()).collect::<Vec<SurrealDbErrors>>()))
     } else {
         Ok(WriteReportResult {
             message: None,
@@ -280,32 +280,41 @@ const SQL_CREATE_REPORT: &str = r#"
         target: $target,
         subdomains: []
     };
-
 "#;
 
 const SQL_CREATE_SUBDOMAIN: &str = r#"
     LET $subdomain = $subdomains[<i>];
     CREATE subdomain CONTENT {
         subdomain: $subdomain.subdomain,
-        report = $report_id,
-        open_ports = []
+        report: $report_id,
+        open_ports: []
     };
     LET $subdomain_id =
         SELECT VALUE id FROM subdomain
         WHERE subdomain = $subdomain.subdomain and report = $report_id;
-    UPDATE $report_id SET subdomains += $subdomain_id;
+    UPDATE $report_id SET subdomains += $subdomain_id[0];
 "#;
 
+// const SQL_CREATE_PORT: &str = r#"
+//     LET $port = $subdomain.open_ports[<j>];
+//     CREATE port_test CONTENT {
+//         test: $port,
+//         j: <j>,
+//         open_ports: $subdomain.open_ports,
+//         subdomain: $subdomain
+//     };
+// "#;
+
 const SQL_CREATE_PORT: &str = r#"
-    LET $port = $subdomain.open_ports[<j>];
+    LET $port = $subdomain.openPorts[<j>];
     CREATE port CONTENT {
-        subdomain: $subdomain_id,
+        subdomain: $subdomain_id[0],
         port: $port.port,
     };
     LET $port_id =
         SELECT VALUE id FROM port
-        WHERE subdomain = $subdomain_id AND port = $port.port;
-    UPDATE $subdomain_id SET open_ports += $port_id;
+        WHERE subdomain = $subdomain_id[0] AND port = $port.port;
+    UPDATE $subdomain_id SET open_ports += $port_id[0];
 "#;
 
 const SQL_BEGIN_UPDATE_REPORT: &str = r#"
@@ -319,7 +328,7 @@ const SQL_UPDATE_SUBDOMAIN: &str = r#"
         WHERE subdomain = $subdomain.subdomain and report = $report_id;
 "#;
 const SQL_UPDATE_PORT: &str = r#"
-    LET $port = $subdomain.open_ports[<j>];
+    LET $port = $subdomain.openPorts[<j>];
     LET $port_id =
         SELECT VALUE id FROM port
         WHERE subdomain = $subdomain_id AND port = $port.port;

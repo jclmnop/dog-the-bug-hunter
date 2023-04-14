@@ -36,6 +36,7 @@ impl HttpServer for ApiGatewayActor {
             RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
                 .await
                 .unwrap_or(HttpResponse::not_found())),
+            //TODO check auth before sending scan request (otherwise it wastes time getting endpoints before being rejected by db)
             RequestType::Scan(scan_request) => Ok(scan(ctx, scan_request)
                 .await
                 .unwrap_or(HttpResponse::not_found())),

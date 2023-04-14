@@ -39,6 +39,8 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
             "Received callback from endpoint enumerator: {:?}",
             resp.target
         );
+        //TODO: retry on this error: Error decoding crt.sh response: error decoding response body: expected value at line 1 column 1
+
         if let Some(subdomains) = &resp.subdomains {
             let report_writer_sender: ReportWriterSender<WasmHost> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
             let write_result = report_writer_sender.write_report(ctx, &WriteReportRequest {
