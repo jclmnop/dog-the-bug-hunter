@@ -29,12 +29,11 @@ pub mod scanner_prelude {
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, StreamExt};
-    use tracing::info;
     pub use wasmbus_rpc::actor::prelude::*;
     pub use wasmbus_rpc::common::Context;
     pub use wasmbus_rpc::error::RpcResult;
     pub use wasmcloud_interface_httpclient::*;
-    pub use wasmcloud_interface_logging::{debug, error};
+    pub use wasmcloud_interface_logging::{debug, error, info};
     pub use wasmcloud_interface_messaging::{
         MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingSender, PubMessage,
         SubMessage,
