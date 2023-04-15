@@ -119,6 +119,8 @@ impl EndpointEnumerator for EndpointEnumeratorProvider {
     }
 }
 
+const RETRIES: usize = 10;
+
 impl EndpointEnumeratorProvider {
     pub const DNS_CONCURRENCY: usize = 100;
     pub const PORT_CONCURRENCY: usize = 100;
@@ -154,19 +156,28 @@ impl EndpointEnumeratorProvider {
         let jwt = req.jwt.to_owned();
         info!("Enumerating endpoints for {}", url);
         let timestamp = Timestamp::now();
-        let subdomains = match Self::enumerate_subdomains(url).await {
-            Ok(subdomains) => subdomains,
-            Err(e) => {
-                error!("Error enumerating subdomains: {}", e);
-                return EnumerateEndpointsResponse {
-                    reason: Some(e.to_string()),
-                    subdomains: None,
-                    success: false,
-                    target: req.target.clone(),
-                    timestamp,
-                    jwt,
-                };
-            }
+        let mut retries = RETRIES;
+        let subdomains = loop {
+            let subdomains_result = Self::enumerate_subdomains(url).await;
+            match subdomains_result {
+                Ok(subdomains) => break subdomains,
+                Err(e) => {
+                    if retries > 0 {
+                        retries -= 1;
+                        continue;
+                    } else {
+                        error!("Error enumerating subdomains: {}", e);
+                        return EnumerateEndpointsResponse {
+                            reason: Some(e.to_string()),
+                            subdomains: None,
+                            success: false,
+                            target: req.target.clone(),
+                            timestamp,
+                            jwt,
+                        };
+                    }
+                }
+            };
         };
 
         let subdomains = match Self::filter_unresolvable_domains(subdomains).await {
