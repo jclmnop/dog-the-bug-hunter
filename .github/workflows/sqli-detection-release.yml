@@ -82,8 +82,9 @@ jobs:
       - name: Determine actor name
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          echo "actor-name=$(grep -E '^name\s+=' Cargo.toml | sed 's/name\s*=\s*"\(.*\)"/\1/')" >> $GITHUB_ENV
-#      - name: Determine actor name
+          echo "actor-name=$(grep -E '^name\s+=' Cargo.toml | sed 's/name\s*=\s*"\(.*\)"/\1/' | head -n 1)" >> $GITHUB_ENV
+
+      #      - name: Determine actor name
 #        working-directory: ${{ env.WORKING_DIR }}
 #        run: |
 #          echo "actor-name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name')" >> $GITHUB_ENV
