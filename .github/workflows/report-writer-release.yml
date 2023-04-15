@@ -52,6 +52,7 @@ jobs:
           name: wasmcloud-actor
           path: ${{ env.WORKING_DIR }}/build
       - name: Create release text
+        working-directory: ${{ env.WORKING_DIR }}
         run: |
           export oci_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
           export claims=$(wash claims inspect build/*.wasm)
