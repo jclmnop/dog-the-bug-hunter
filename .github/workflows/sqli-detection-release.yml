@@ -1,4 +1,4 @@
-name: Release to GHCR
+name: [SQLi-detection] Release to GHCR
 on:
   workflow_dispatch:
   push:
@@ -80,19 +80,23 @@ jobs:
           name: wasmcloud-actor
           path: ${{ env.WORKING_DIR }}/build
       - name: Determine actor name
+        working-directory: ${{ env.WORKING_DIR }}
         run: |
           echo "actor-name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name')" >> $GITHUB_ENV
       - name: Determine actor version
         if: startswith(github.ref, 'refs/tags/') # Only run on tag push
+        working-directory: ${{ env.WORKING_DIR }}
         run: |
           echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
       - name: Determine actor version (main)
+        working-directory: ${{ env.WORKING_DIR }}
         if: ${{ !startswith(github.ref, 'refs/tags/') }}
         run: |
           echo "actor-version=latest" >> $GITHUB_ENV
       - name: Push actor to GHCR
+        working-directory: ${{ env.WORKING_DIR }}
         env:
           WASH_REG_USER: ${{ github.repository_owner }}
           WASH_REG_PASSWORD: ${{ secrets.WASMCLOUD_PAT }}
         run: |
-          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} ${{ env.WORKING_DIR }}/build/${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
+          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} build/${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
