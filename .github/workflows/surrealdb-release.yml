@@ -45,8 +45,8 @@ jobs:
           name: ${{ matrix.target }}
           if-no-files-found: error
           path: |
-            ${{ env.WORKING_DIR }}target/${{ matrix.target }}/release/${{ env.artifact-name }}
-            ${{ env.WORKING_DIR }}target/${{ matrix.target }}/release/${{ env.artifact-name }}.exe
+            ${{ env.WORKING_DIR }}/target/${{ matrix.target }}/release/${{ env.artifact-name }}
+            ${{ env.WORKING_DIR }}/target/${{ matrix.target }}/release/${{ env.artifact-name }}.exe
 
   assemble_provider_archive:
     needs: [build_provider_targets]
@@ -121,7 +121,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: provider-archive
-          path: ${{ env.WORKING_DIR }}build
+          path: ${{ env.WORKING_DIR }}/build
 
       - name: Determine provider name
         working-directory: ${{ env.WORKING_DIR }}
