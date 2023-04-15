@@ -1,4 +1,4 @@
-name: SQLi-detection Release to GHCR
+name: Report-writer Release to GHCR
 on:
   workflow_dispatch:
   push:
@@ -14,7 +14,7 @@ env:
   WASH_ISSUER_KEY: ${{ secrets.WASH_ISSUER_KEY }}
   WASH_SUBJECT_KEY: ${{ secrets.WASH_SUBJECT_KEY_REPORT_WRITER }}
   WASMCLOUD_PAT: ${{ secrets.WASMCLOUD_PAT }}
-  WORKING_DIR: actors/report_writer
+  WORKING_DIR: actors/report-writer
   ACTOR_NAME: report_writer
 jobs:
   build_signed_actor:
