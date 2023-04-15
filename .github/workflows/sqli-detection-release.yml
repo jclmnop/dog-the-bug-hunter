@@ -103,18 +103,11 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: ls -la build
 
+
       - name: Push actor to GHCR
-        working-directory: ${{ env.WORKING_DIR }}/build
+        working-directory: ${{ env.WORKING_DIR }}
         env:
           WASH_REG_USER: ${{ github.repository_owner }}
           WASH_REG_PASSWORD: ${{ secrets.WASMCLOUD_PAT }}
         run: |
-          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} ${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
-
-#      - name: Push actor to GHCR
-#        working-directory: ${{ env.WORKING_DIR }}
-#        env:
-#          WASH_REG_USER: ${{ github.repository_owner }}
-#          WASH_REG_PASSWORD: ${{ secrets.WASMCLOUD_PAT }}
-#        run: |
-#          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} build/${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
+          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} build/sqli_detection_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
