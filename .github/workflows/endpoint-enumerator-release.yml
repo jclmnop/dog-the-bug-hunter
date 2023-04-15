@@ -14,7 +14,7 @@ env:
   WASH_ISSUER_KEY: ${{ secrets.WASH_ISSUER_KEY }}
   WASH_SUBJECT_KEY: ${{ secrets.WASH_SUBJECT_KEY_ENDPOINT_ENUMERATOR }}
   WASMCLOUD_PAT: ${{ secrets.WASMCLOUD_PAT }}
-  WORKING_DIR: ./providers/surrealdb
+  WORKING_DIR: ./providers/endpoint-enumerator
 jobs:
   # Using a matrix, build for 6 supported targets for wasmCloud providers
   build_provider_targets:
