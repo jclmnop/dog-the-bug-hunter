@@ -6,7 +6,7 @@ use dtbh_interface::endpoint_enumerator::{
 use dtbh_interface::orchestrator::RunScansRequest;
 use dtbh_interface::orchestrator_prelude::*;
 use dtbh_interface::scanner_prelude::ScanEndpointParams;
-use dtbh_interface::{REPORT_WRITER_ACTOR, ReportWriter, TASKS_TOPIC, WriteReportRequest};
+use dtbh_interface::{ReportWriter, WriteReportRequest, REPORT_WRITER_ACTOR, TASKS_TOPIC};
 use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_messaging::{Messaging, MessagingSender, PubMessage};
 
@@ -42,16 +42,38 @@ impl EndpointEnumeratorCallbackReceiver for OrchestratorActor {
         //TODO: retry on this error: Error decoding crt.sh response: error decoding response body: expected value at line 1 column 1
 
         if let Some(subdomains) = &resp.subdomains {
-            let report_writer_sender: ReportWriterSender<WasmHost> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
-            let write_result = report_writer_sender.write_report(ctx, &WriteReportRequest {
-                jwt: resp.jwt.to_string(),
-                report: Report {
-                    subdomains: subdomains.to_owned(),
-                    target: resp.target.to_owned(),
-                    timestamp: resp.timestamp.to_owned(),
-                    user_id: "".to_string()  //TODO: remove this field,
-                },
-            }).await?;
+            let report_writer_sender: ReportWriterSender<WasmHost> =
+                ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
+            match report_writer_sender
+                .write_report(
+                    ctx,
+                    &WriteReportRequest {
+                        jwt: resp.jwt.to_string(),
+                        report: Report {
+                            subdomains: subdomains.to_owned(),
+                            target: resp.target.to_owned(),
+                            timestamp: resp.timestamp.to_owned(),
+                            user_id: "".to_string(), //TODO: remove this field,
+                        },
+                    },
+                )
+                .await
+            {
+                Ok(_) => {
+                    info!("Succesfully created new report for {}", resp.target);
+                }
+                Err(RpcError::Timeout(s) | RpcError::DeadlineExceeded(s)) => {
+                    info!(
+                        "Timed out creating report for {}, continuing with scans.",
+                        resp.target
+                    );
+                }
+                Err(e) => {
+                    error!("Error create report for {}: {e}", resp.target);
+                    return Ok(());
+                }
+            }
+
             for subdomain in subdomains {
                 let params = ScanEndpointParams {
                     subdomain: subdomain.clone(),

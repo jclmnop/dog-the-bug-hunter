@@ -9,7 +9,8 @@ use wasmcloud_interface_messaging::{
     MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingReceiver,
 };
 use wasmcloud_interface_surrealdb::{
-    Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbSender, SurrealDbErrors
+    Bindings, Queries, QueryRequest, QueryResponse, RequestScope, SurrealDb, SurrealDbErrors,
+    SurrealDbSender,
 };
 
 const CALL_ALIAS: &str = "dtbh/report-writer";
@@ -27,8 +28,10 @@ impl ReportWriter for ReportActor {
         req: &WriteReportRequest,
     ) -> RpcResult<WriteReportResult> {
         info!("Writing new report for {}", req.report.target);
-        info!("{:#?}", req.report);
-        new_report(ctx, req).await.map_err(|e| RpcError::Other(format!("Failed to create new report: {e}")))
+        // info!("{:#?}", req.report);
+        new_report(ctx, req)
+            .await
+            .map_err(|e| RpcError::Other(format!("Failed to create new report: {e}")))
         // match new_report(ctx, req).await {
         //     Ok(write_report_result) => Ok(write_report_result),
         //     Err(e) => Ok(WriteReportResult {
@@ -207,7 +210,13 @@ async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteRepo
         .await?;
 
     if results.iter().any(|r| !r.errors.is_empty()) {
-        Err(anyhow!("{:#?}", results.iter().map(|r| r.errors.clone()).collect::<Vec<SurrealDbErrors>>()))
+        Err(anyhow!(
+            "{:#?}",
+            results
+                .iter()
+                .map(|r| r.errors.clone())
+                .collect::<Vec<SurrealDbErrors>>()
+        ))
     } else {
         Ok(WriteReportResult {
             message: None,
@@ -310,6 +319,7 @@ const SQL_CREATE_PORT: &str = r#"
     CREATE port CONTENT {
         subdomain: $subdomain_id[0],
         port: $port.port,
+        findings: []
     };
     LET $port_id =
         SELECT VALUE id FROM port

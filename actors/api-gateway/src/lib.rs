@@ -75,13 +75,12 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
                     error!("Failed to begin scan: {target}");
                     failures.push(target)
                 }
-
             }
             Err(e) => {
                 error!("Failed to begin scan: {target}");
                 error!("{e}");
                 failures.push(target)
-            },
+            }
         }
     }
 
