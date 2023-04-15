@@ -66,7 +66,7 @@ impl ReportWriter for ReportActor {
         } else {
             sql.extend("timestamp <= time::now() ".chars());
         }
-        sql.extend("FETCH subdomains, subdomains.open_ports;".chars());
+        sql.extend("FETCH subdomains, subdomains.openPorts;".chars());
         let start_timestamp = req
             .start_timestamp
             .unwrap_or(Timestamp::new(1681490325, 0)?)
@@ -111,7 +111,7 @@ impl ReportWriter for ReportActor {
                     let mut reports: Vec<Report> = vec![];
                     for report_ser in &response_ser.response {
                         let report_utf8 = std::str::from_utf8(report_ser).unwrap_or("{}");
-                        info!("{report_utf8:#?}");
+                        // info!("{report_utf8:#?}");
                         if report_utf8 != "[]" {
                             match serde_json::from_slice::<Vec<Report>>(&report_ser) {
                                 Ok(report) => {
@@ -127,7 +127,7 @@ impl ReportWriter for ReportActor {
                             }
                         }
                     }
-                    info!("{reports:#?}");
+                    // info!("{reports:#?}");
                     GetReportsResult {
                         reason: None,
                         reports: Some(reports),

@@ -61,7 +61,7 @@ DEFINE FIELD openPorts ON TABLE subdomain TYPE array
     VALUE $value OR [];
 DEFINE FIELD openPorts.* ON TABLE subdomain TYPE record (port);
 
-DEFINE TABLE port SCHEMAFULL
+DEFINE TABLE port SCHEMALESS
     PERMISSIONS
         FOR create
             WHERE $scope = "user_scope"
