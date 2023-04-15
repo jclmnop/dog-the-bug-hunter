@@ -341,7 +341,7 @@ const SQL_UPDATE_PORT: &str = r#"
     LET $port = $subdomain.openPorts[<j>];
     LET $port_id =
         SELECT VALUE id FROM port
-        WHERE subdomain = $subdomain_id AND port = $port.port;
+        WHERE subdomain = $subdomain_id[0] AND port = $port.port;
     UPDATE $port_id SET findings += $port.findings;
 "#;
 
