@@ -13,6 +13,7 @@ use futures::{stream, StreamExt};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, error, info, instrument, trace};
 use wasmbus_rpc::common::Context;
@@ -164,6 +165,7 @@ impl EndpointEnumeratorProvider {
                 Err(e) => {
                     if retries > 0 {
                         retries -= 1;
+                        tokio::time::sleep(Duration::from_secs(10)).await;
                         continue;
                     } else {
                         error!("Error enumerating subdomains: {}", e);
