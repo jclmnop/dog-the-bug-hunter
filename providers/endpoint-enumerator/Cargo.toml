@@ -21,7 +21,7 @@ reqwest = { version = "0.11.16", default-features = false, features = ["json", "
 serde = { version = "1.0.159", features = ["derive"] }
 trust-dns-resolver = "0.22.0"
 wasmbus-rpc = { version = "0.13.0", features = ["otel"] }
-dtbh_interface = { path = "../../interfaces/dtbh/rust" }
+dtbh_interface = "0.1.0"
 anyhow = "1.0.70"
 serde_json = "1.0.95"
 
