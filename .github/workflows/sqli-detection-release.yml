@@ -2,7 +2,7 @@ name: Release to GHCR
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "**"
       - "src/**"
@@ -14,6 +14,7 @@ env:
   WASH_ISSUER_KEY: ${{ secrets.WASH_ISSUER_KEY }}
   WASH_SUBJECT_KEY: ${{ secrets.WASH_SUBJECT_KEY_SQLI_DETECTION }}
   WASMCLOUD_PAT: ${{ secrets.WASMCLOUD_PAT }}
+  WORKING_DIR: actors/scanner-modules/sqli-detection
 jobs:
   build_signed_actor:
     runs-on: ubuntu-latest
@@ -30,12 +31,12 @@ jobs:
         env:
           WASH_ISSUER_KEY: ${{ env.WASH_ISSUER_KEY }}
           WASH_SUBJECT_KEY: ${{ env.WASH_SUBJECT_KEY }}
-        run: wash build -p actors/scanner-modules/sqli-detection
+        run: wash build -p ${ env.WORKING_DIR }
       - name: Upload signed actor to GH Actions
         uses: actions/upload-artifact@v2
         with:
           name: wasmcloud-actor
-          path: actors/scanner-modules/sqli-detection/build/*.wasm
+          path: ${{ env.WORKING_DIR }}/build/*.wasm
 
   github_release:
     if: startswith(github.ref, 'refs/tags/') # Only run on tag push
@@ -48,7 +49,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: wasmcloud-actor
-          path: build
+          path: ${{ env.WORKING_DIR }}/build
       - name: Create release text
         run: |
           export oci_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
@@ -61,7 +62,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/*.wasm
+          files: ${{ env.WORKING_DIR }}/build/*.wasm
           token: ${{ env.WASMCLOUD_PAT }}
           body_path: release.txt
           prerelease: false
@@ -77,7 +78,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: wasmcloud-actor
-          path: build
+          path: ${{ env.WORKING_DIR }}/build
       - name: Determine actor name
         run: |
           echo "actor-name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name')" >> $GITHUB_ENV
@@ -94,4 +95,4 @@ jobs:
           WASH_REG_USER: ${{ github.repository_owner }}
           WASH_REG_PASSWORD: ${{ secrets.WASMCLOUD_PAT }}
         run: |
-          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} build/${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
+          wash reg push ghcr.io/${{ github.REPOSITORY }}:${{ env.actor-version }} ${{ env.WORKING_DIR }}/build/${{ env.actor-name }}_s.wasm -a org.opencontainers.image.source=https://github.com/${{ github.REPOSITORY }} --allow-latest
