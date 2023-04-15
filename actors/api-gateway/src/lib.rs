@@ -6,6 +6,7 @@ use dtbh_interface::{ORCHESTRATOR_ACTOR, REPORT_WRITER_ACTOR};
 use wasmbus_rpc::actor::prelude::*;
 use wasmcloud_interface_httpserver::{HttpRequest, HttpResponse, HttpServer, HttpServerReceiver};
 use wasmcloud_interface_surrealdb::AuthParams;
+use crate::auth::unauthorised_http_response;
 
 #[allow(dead_code)]
 const CALL_ALIAS: &str = "dtbh/api-gateway";
@@ -32,6 +33,7 @@ enum RequestType {
 impl HttpServer for ApiGatewayActor {
     async fn handle_request(&self, ctx: &Context, req: &HttpRequest) -> RpcResult<HttpResponse> {
         // info!("{req:#?}");
+        let headers = &req.header;
         match RequestType::from(req.to_owned()) {
             RequestType::GetReports(reports_request) => Ok(get_reports(ctx, reports_request)
                 .await
@@ -58,7 +60,11 @@ impl HttpServer for ApiGatewayActor {
 }
 
 async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
-    debug!("Scan request: {:#?}", req);
+    if !auth::authenticate_jwt(ctx, &req.jwt).await? {
+        error!("Unauthorised scan request");
+        return Ok(unauthorised_http_response(None))
+    }
+    debug!("Scan request: {:?}", req.targets);
     let orchestrator: OrchestratorSender<_> = OrchestratorSender::to_actor(ORCHESTRATOR_ACTOR);
     let targets = req.targets;
     let mut failures: Vec<String> = vec![];
@@ -96,8 +102,12 @@ async fn scan(ctx: &Context, req: ScanRequest) -> RpcResult<HttpResponse> {
 }
 
 async fn get_reports(ctx: &Context, req: GetReportsRequest) -> RpcResult<HttpResponse> {
+    if !auth::authenticate_jwt(ctx, &req.jwt).await? {
+        error!("Unauthorised reports request");
+        return Ok(unauthorised_http_response(None))
+    }
+
     let report_writer: ReportWriterSender<_> = ReportWriterSender::to_actor(REPORT_WRITER_ACTOR);
-    info!("{req:#?}");
     match report_writer.get_reports(ctx, &req).await {
         Ok(reports_result) => match reports_result.result() {
             Ok(reports) => {

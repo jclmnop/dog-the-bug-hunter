@@ -57,9 +57,9 @@ DEFINE FIELD report ON TABLE subdomain TYPE record (report)
     ASSERT $value != NONE AND fn::report_exists($value);
 DEFINE FIELD subdomain ON TABLE subdomain TYPE string
     ASSERT $value != NONE;
-DEFINE FIELD ports ON TABLE subdomain TYPE array
+DEFINE FIELD openPorts ON TABLE subdomain TYPE array
     VALUE $value OR [];
-DEFINE FIELD ports.* ON TABLE subdomain TYPE record (port);
+DEFINE FIELD openPorts.* ON TABLE subdomain TYPE record (port);
 
 DEFINE TABLE port SCHEMAFULL
     PERMISSIONS
@@ -73,6 +73,6 @@ DEFINE FIELD port ON TABLE port TYPE int
     ASSERT $value != NONE;
 DEFINE FIELD findings ON TABLE port TYPE array
     VALUE $value OR [];
-DEFINE FIELD is_open ON TABLE port TYPE bool
+DEFINE FIELD isOpen ON TABLE port TYPE bool
     VALUE $value OR true;
 DEFINE FIELD findings.* ON TABLE port TYPE object;

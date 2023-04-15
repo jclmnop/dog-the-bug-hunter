@@ -296,23 +296,13 @@ const SQL_CREATE_SUBDOMAIN: &str = r#"
     CREATE subdomain CONTENT {
         subdomain: $subdomain.subdomain,
         report: $report_id,
-        open_ports: []
+        openPorts: []
     };
     LET $subdomain_id =
         SELECT VALUE id FROM subdomain
         WHERE subdomain = $subdomain.subdomain and report = $report_id;
     UPDATE $report_id SET subdomains += $subdomain_id[0];
 "#;
-
-// const SQL_CREATE_PORT: &str = r#"
-//     LET $port = $subdomain.open_ports[<j>];
-//     CREATE port_test CONTENT {
-//         test: $port,
-//         j: <j>,
-//         open_ports: $subdomain.open_ports,
-//         subdomain: $subdomain
-//     };
-// "#;
 
 const SQL_CREATE_PORT: &str = r#"
     LET $port = $subdomain.openPorts[<j>];
@@ -324,7 +314,7 @@ const SQL_CREATE_PORT: &str = r#"
     LET $port_id =
         SELECT VALUE id FROM port
         WHERE subdomain = $subdomain_id[0] AND port = $port.port;
-    UPDATE $subdomain_id SET open_ports += $port_id[0];
+    UPDATE $subdomain_id SET openPorts += $port_id[0];
 "#;
 
 const SQL_BEGIN_UPDATE_REPORT: &str = r#"

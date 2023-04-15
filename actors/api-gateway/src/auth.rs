@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use serde_json::json;
 use wasmbus_rpc::actor::prelude::WasmHost;
 use wasmbus_rpc::common::Context;
+use wasmbus_rpc::error::RpcResult;
 use wasmcloud_interface_httpserver::{HeaderMap, HttpResponse};
 use wasmcloud_interface_surrealdb::{AuthParams, RequestScope, SurrealDb, SurrealDbSender};
 
@@ -108,8 +109,10 @@ pub async fn sign_up(ctx: &Context, credentials: AuthParams) -> Result<HttpRespo
     Ok(response)
 }
 
-pub async fn auth(ctx: &Context, headers: &HeaderMap) -> Result<String> {
-    todo!()
+pub async fn authenticate_jwt(ctx: &Context, jwt: &String) -> RpcResult<bool> {
+    let surreal_client: SurrealDbSender<WasmHost> = SurrealDbSender::new();
+    let response = surreal_client.authenticate(ctx, jwt).await?;
+    Ok(response.success)
 }
 
 pub fn set_jwt_cookie(jwt: String) -> HeaderMap {
