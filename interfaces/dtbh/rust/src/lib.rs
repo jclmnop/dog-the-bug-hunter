@@ -25,15 +25,16 @@ pub mod scanner_prelude {
     pub use crate::http_endpoint_scanner::{
         HttpEndpointScanner, HttpEndpointScannerReceiver, ScanEndpointParams, ScanEndpointResult,
     };
-    use crate::{Report, PUB_RESULTS_TOPIC, TASKS_TOPIC};
+    use crate::{Report, WriteReportRequest, PUB_RESULTS_TOPIC, TASKS_TOPIC};
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use futures::{stream, StreamExt};
+    use tracing::info;
     pub use wasmbus_rpc::actor::prelude::*;
     pub use wasmbus_rpc::common::Context;
     pub use wasmbus_rpc::error::RpcResult;
     pub use wasmcloud_interface_httpclient::*;
-    pub use wasmcloud_interface_logging::{debug, error, info};
+    pub use wasmcloud_interface_logging::{debug, error};
     pub use wasmcloud_interface_messaging::{
         MessageSubscriber, MessageSubscriberReceiver, Messaging, MessagingSender, PubMessage,
         SubMessage,
@@ -93,24 +94,49 @@ pub mod scanner_prelude {
         async fn publish_result(&self, ctx: &Context, result: ScanEndpointResult) -> Result<()> {
             let topic = Self::pub_topic();
             if result.success {
+                let subdomain = Self::filter_ports_with_no_findings(result.subdomain);
                 let report = Report {
-                    subdomains: if let Some(subdomain) = result.subdomain {
+                    subdomains: if let Some(subdomain) = subdomain {
                         vec![subdomain]
                     } else {
                         vec![]
                     },
                     target: result.target,
                     timestamp: result.timestamp,
-                    user_id: result.jwt,
+                    user_id: "".to_string(),
                 };
-                let msg = PubMessage {
-                    subject: topic.to_string(),
-                    body: serde_json::to_vec(&report)?,
-                    reply_to: None,
-                };
-                MessagingSender::new().publish(ctx, &msg).await?;
+
+                if !report.subdomains.is_empty() {
+                    let msg = PubMessage {
+                        subject: topic.to_string(),
+                        body: serde_json::to_vec(&WriteReportRequest {
+                            jwt: result.jwt,
+                            report,
+                        })?,
+                        reply_to: None,
+                    };
+                    MessagingSender::new().publish(ctx, &msg).await?;
+                }
             }
             Ok(())
+        }
+
+        fn filter_ports_with_no_findings(subdomain: Option<Subdomain>) -> Option<Subdomain> {
+            if let Some(mut subdomain) = subdomain {
+                subdomain.open_ports = subdomain
+                    .open_ports
+                    .into_iter()
+                    .filter(|p| !p.findings.is_empty())
+                    .collect();
+
+                if subdomain.open_ports.is_empty() {
+                    None
+                } else {
+                    Some(subdomain)
+                }
+            } else {
+                None
+            }
         }
 
         /// Scan endpoints for the vulnerability this scanner specialises in
