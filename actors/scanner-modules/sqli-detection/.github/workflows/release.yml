@@ -12,7 +12,7 @@ on:
 env:
   # For the release action, you'll have to set the following variables
   WASH_ISSUER_KEY: ${{ secrets.WASH_ISSUER_KEY }}
-  WASH_SUBJECT_KEY: ${{ secrets.WASH_SUBJECT_KEY }}
+  WASH_SUBJECT_KEY: ${{ secrets.WASH_SUBJECT_KEY_SQLI_DETECTION }}
   WASMCLOUD_PAT: ${{ secrets.WASMCLOUD_PAT }}
 jobs:
   build_signed_actor:
