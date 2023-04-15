@@ -1,4 +1,4 @@
-name: [SQLi-detection] Release to GHCR
+name: SQLi-detection Release to GHCR
 on:
   workflow_dispatch:
   push:
