@@ -9,12 +9,13 @@ readme = "README.md"
 
 [dependencies]
 tokio = { version = "1", features = [ "full" ] }
-futures = "0.3.27"
+futures = "0.3.28"
 async-trait = "0.1"
 tracing = "0.1.37"
 wasmbus-rpc = "0.13.0"
 wasmcloud-interface-surrealdb = "0.1.0"
-surrealdb = "1.0.0-beta.9" # features?
+surrealdb = { git = "https://github.com/surrealdb/surrealdb" }
+#surrealdb = "1.0.0-beta.9+20230402" # features?
 serde = "1.0.159"
 serde_json = "1.0.95"
 anyhow = "1.0.70"
