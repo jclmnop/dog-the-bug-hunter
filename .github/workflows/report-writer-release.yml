@@ -53,15 +53,15 @@ jobs:
           name: wasmcloud-actor
           path: ${{ env.WORKING_DIR }}/build
       - name: Create release text
-        working-directory: ${{ env.WORKING_DIR }}
+#        working-directory: ${{ env.WORKING_DIR }}
         run: |
           export oci_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
           export claims=$(wash claims inspect build/*.wasm)
-          echo "Your actor can be accessed at \`ghcr.io/${{ github.REPOSITORY }}:$oci_version\`" >> ${{ env.WORKING_DIR }}/release.txt
-          echo "Claims information:" >> ${{ env.WORKING_DIR }}/release.txt
-          echo "\`\`\`" >> ${{ env.WORKING_DIR }}/release.txt
-          echo "$claims" >> ${{ env.WORKING_DIR }}/release.txt
-          echo "\`\`\`" >> ${{ env.WORKING_DIR }}/release.txt
+          echo "Your actor can be accessed at \`ghcr.io/${{ github.REPOSITORY }}:$oci_version\`" >> release.txt
+          echo "Claims information:" >> release.txt
+          echo "\`\`\`" >> release.txt
+          echo "$claims" >> release.txt
+          echo "\`\`\`" >> release.txt
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
