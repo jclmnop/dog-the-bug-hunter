@@ -148,20 +148,22 @@ impl ReportWriter for ReportActor {
 impl MessageSubscriber for ReportActor {
     /// Topic: `dtbh.reports.in`
     async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+        info!("Received message on topic {}", msg.subject);
         let report_req: WriteReportRequest =
             serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
         let report_json = serde_json::to_string_pretty(&report_req.report)
             .map_err(|e| RpcError::Ser(e.to_string()))?;
+
+        if let Err(e) = update_report(ctx, report_req).await {
+            error!("Failed to write report: {e}")
+        }
+
         let pub_msg = PubMessage {
             subject: PUB_TOPIC.to_string(),
             reply_to: None,
             body: serde_json::to_vec(&report_json).map_err(|e| RpcError::Ser(e.to_string()))?,
         };
         let publisher: MessagingSender<_> = MessagingSender::new();
-
-        if let Err(e) = update_report(ctx, report_req).await {
-            error!("Failed to write report: {e}")
-        }
         publisher.publish(ctx, &pub_msg).await?;
 
         Ok(())
@@ -231,6 +233,7 @@ async fn update_report(
 ) -> Result<WriteReportResult> {
     let surreal_client = SurrealDbSender::new();
     //TODO: decode user_id from JWT (in orchestrator)
+    info!("Updating report");
     let scope = RequestScope {
         jwt: Some(jwt),
         ..Default::default()
@@ -265,18 +268,30 @@ async fn update_report(
                 scope: Some(scope),
             },
         )
-        .await?;
+        .await;
 
-    if results.iter().any(|r| !r.errors.is_empty()) {
-        Ok(WriteReportResult {
-            message: Some("Failed to write all to database".to_string()),
-            success: false,
-        })
-    } else {
-        Ok(WriteReportResult {
-            message: None,
-            success: true,
-        })
+    match results {
+        Ok(results) => {
+            if results.iter().any(|r| !r.errors.is_empty()) {
+                error!("Failed to write report: {:#?}", results.iter().map(|r| r.errors.clone()).collect::<Vec<SurrealDbErrors>>());
+                Ok(WriteReportResult {
+                    message: Some("Failed to write all to database".to_string()),
+                    success: false,
+                })
+            } else {
+                Ok(WriteReportResult {
+                    message: None,
+                    success: true,
+                })
+            }
+        }
+        Err(e) => {
+            error!("Failed to write report: {e}");
+            Ok(WriteReportResult {
+                message: Some("Failed to write report".to_string()),
+                success: false,
+            })
+        }
     }
 }
 

@@ -12,6 +12,7 @@ exclude = [
   "./interfaces/surrealdb/rust",
   "./providers/surrealdb/",
   "./providers/endpoint-enumerator",
+  "./cli"
 ]
 default-members = [
   "./actors/scanner-modules/*",
