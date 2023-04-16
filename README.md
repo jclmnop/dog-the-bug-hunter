@@ -54,8 +54,9 @@ providers to the super-constellation, on any cloud provider.
 ### General
 - [x] Decide between KV/SQL/surrealDB for storing reports (leaning towards surrealDB)
   - [x] build a surrealDB provider
-- [ ] Test on local
-- [ ] Test on cosmonic
+- [x] Test on local
+- [x] Test on cosmonic
+  - [ ] figure out why report-writer won't receive NATS messages on cosmonic 
 - [ ] Test scaling on Railway/Digital Ocean
 - [ ] Refactor interfaces
   - [ ] remove some "services"
@@ -116,7 +117,7 @@ providers to the super-constellation, on any cloud provider.
 - [ ] Front end for login + submitting targets
 - [ ] Front end for viewing reports 
 - [ ] notifications/emails when reports are ready for a specific vulnerability scanner
-- [ ] deploy script
+- [ ] deploy script/wadm
 - [ ] Figure out optimal concurrency values for endpoint enumerator provider
 - [ ] Trim down the list of ports, or add a config for endpoint enumerator provider
 - [ ] Test scalability with a separate containerised deployment on Railway and Digital Ocean 
@@ -125,3 +126,4 @@ providers to the super-constellation, on any cloud provider.
 - [ ] customisable wordlists stored in user-specific KV storage
 - [ ] blind TRUE/FALSE SQLi
 - [ ] blind sleep/time based SQLi
+- [ ] WSS support for surrealDB provider
