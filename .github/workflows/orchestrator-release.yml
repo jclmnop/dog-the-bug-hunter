@@ -4,9 +4,10 @@ on:
   push:
     branches: [master]
     paths:
-      - "**"
-      - "src/**"
-      - "Cargo.*"
+#      - "**"
+#      - "src/**"
+#      - "Cargo.*"
+      - "actors/orchestrator/**"
     tags:
       - "v*"
 env:
@@ -94,7 +95,9 @@ jobs:
         if: startswith(github.ref, 'refs/tags/') # Only run on tag push
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
+          echo "actor-version=$version" >> $GITHUB_ENV
+#          echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
       - name: Determine actor version (main)
         working-directory: ${{ env.WORKING_DIR }}
         if: ${{ !startswith(github.ref, 'refs/tags/') }}

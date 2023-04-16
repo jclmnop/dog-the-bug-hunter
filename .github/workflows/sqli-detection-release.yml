@@ -4,9 +4,10 @@ on:
   push:
     branches: [master]
     paths:
-      - "**"
-      - "src/**"
-      - "Cargo.*"
+#      - "**"
+#      - "src/**"
+#      - "Cargo.*"
+      - "actors/scanner-modules/sqli-detection/**"
     tags:
       - "v*"
 env:
@@ -99,7 +100,9 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         if: ${{ !startswith(github.ref, 'refs/tags/') }}
         run: |
-          echo "actor-version=latest" >> $GITHUB_ENV
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
+          echo "actor-version=$version" >> $GITHUB_ENV
+#          echo "actor-version=latest" >> $GITHUB_ENV
       - name: List build directory contents
         working-directory: ${{ env.WORKING_DIR }}
         run: ls -la build
