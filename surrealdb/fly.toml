@@ -15,7 +15,7 @@ primary_region = "lax"
     grace_period = "5s"
 
 [env]
-  LOG_LEVEL = "trace"
+  SURREAL_LOG = "trace"
 
 [mounts]
 source="data"
