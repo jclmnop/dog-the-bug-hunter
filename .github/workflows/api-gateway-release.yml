@@ -95,7 +95,8 @@ jobs:
         if: startswith(github.ref, 'refs/tags/') # Only run on tag push
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
+          pkg_name=$(basename $PWD)
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r --arg pkg_name "$pkg_name" '.packages[] | select(.name == $pkg_name) | .version')
           echo "actor-version=$version" >> $GITHUB_ENV
 #          echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
       - name: Determine actor version (main)
