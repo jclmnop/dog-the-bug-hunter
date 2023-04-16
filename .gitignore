@@ -190,3 +190,5 @@ interfaces/sleepy
 providers/sleepy
 history.txt
 ./history.txt
+surrealdb/.env
+surrealdb/setttings.json
