@@ -1,0 +1,22 @@
+# fly.toml file generated for dtbh-surrealdb on 2023-04-16T11:37:03+01:00
+
+app = "dtbh-surrealdb"
+primary_region = "lax"
+
+[http_service]
+  internal_port = 8080
+  force_https = false
+
+[checks]
+  [checks.alive]
+    type = "tcp"
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+
+[env]
+  LOG_LEVEL = "trace"
+
+[mounts]
+source="data"
+destination="/data"
