@@ -95,13 +95,15 @@ jobs:
         if: startswith(github.ref, 'refs/tags/') # Only run on tag push
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
+          pkg_name=$(basename $PWD)
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r --arg pkg_name "$pkg_name" '.packages[] | select(.name == $pkg_name) | .version')
+          echo "actor-version=$version" >> $GITHUB_ENV
+#          echo "actor-version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')" >> $GITHUB_ENV
       - name: Determine actor version (main)
         working-directory: ${{ env.WORKING_DIR }}
         if: ${{ !startswith(github.ref, 'refs/tags/') }}
         run: |
-          pkg_name=$(basename $PWD)
-          version=$(cargo metadata --no-deps --format-version 1 | jq -r --arg pkg_name "$pkg_name" '.packages[] | select(.name == $pkg_name) | .version')
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')
           echo "actor-version=$version" >> $GITHUB_ENV
 #          echo "actor-version=latest" >> $GITHUB_ENV
       - name: List build directory contents
