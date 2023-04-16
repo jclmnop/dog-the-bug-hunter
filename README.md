@@ -33,7 +33,7 @@ The orchestrator then publishes a message using NATS to a channel which all vuln
 endpoints, it will publish the results to a NATS channel which the report-writer actor is subscribed to. 
 
 The report writer writes these results into the report for the specified job (composed of the UserID, Target and 
-RequestTimestamp) using the KV storage provider.
+RequestTimestamp) using the SurrealDB provider.
 
 The system can be easily scaled by adding more vulnerability scanner actors and more endpoint enumerator + Http-Client 
 providers to the super-constellation, on any cloud provider.  

@@ -148,6 +148,7 @@ impl ReportWriter for ReportActor {
 impl MessageSubscriber for ReportActor {
     /// Topic: `dtbh.reports.in`
     async fn handle_message(&self, ctx: &Context, msg: &SubMessage) -> RpcResult<()> {
+        ping(ctx).await?; // For debugging, I want to check if logs aren't being sent
         info!("Received message on topic {}", msg.subject);
         let report_req: WriteReportRequest =
             serde_json::from_slice(&msg.body).map_err(|e| RpcError::Deser(e.to_string()))?;
@@ -168,6 +169,21 @@ impl MessageSubscriber for ReportActor {
 
         Ok(())
     }
+}
+
+async fn ping(ctx: &Context) -> RpcResult<()> {
+    let publisher: MessagingSender<_> = MessagingSender::new();
+    let _ = publisher
+        .publish(
+            ctx,
+            &PubMessage {
+                subject: PUB_TOPIC.to_string(),
+                reply_to: None,
+                body: b"ping".to_vec(),
+            },
+        )
+        .await;
+    Ok(())
 }
 
 async fn new_report(ctx: &Context, req: &WriteReportRequest) -> Result<WriteReportResult> {
