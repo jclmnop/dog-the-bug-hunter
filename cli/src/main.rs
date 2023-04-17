@@ -1,5 +1,7 @@
 use anyhow::anyhow;
+use chrono::prelude::*;
 use clap::{Args, Parser, Subcommand};
+use colored_json::prelude::*;
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
@@ -70,10 +72,10 @@ enum Commands {
         /// then reports for all targets will be returned
         #[arg(short, long)]
         target: Vec<String>,
-        /// Start time for the report, in ISO 8601 format
+        /// Start time for the report, in ISO 8601 format (e.g. 2021-01-01 00:00:00)
         #[arg(short, long)]
         start_time: Option<String>,
-        /// End time for the report, in ISO 8601 format
+        /// End time for the report, in ISO 8601 format (e.g. 2021-01-01 00:00:00)
         #[arg(short, long)]
         end_time: Option<String>,
         /// Start timestamp for the report, in seconds since epoch
@@ -150,12 +152,12 @@ impl Cli {
             Commands::SignUp(AuthArgs {
                 username,
                 password,
-                                 print_jwt: output_jwt,
+                print_jwt: output_jwt,
             }) => self.write_jwt(sign_up(username, password, *output_jwt)?)?,
             Commands::SignIn(AuthArgs {
                 username,
                 password,
-                                 print_jwt: output_jwt,
+                print_jwt: output_jwt,
             }) => self.write_jwt(sign_in(username, password, *output_jwt)?)?,
             Commands::Reports {
                 target,
@@ -243,26 +245,60 @@ fn reports(
         anyhow::bail!("No JWT provided, please sign in or sign up");
     }
     let jwt = jwt.unwrap();
+
+    let start = if let Some(start_time) = start_timestamp {
+        wasmbus_rpc::Timestamp::new(start_time, 0)
+            .map_err(|e| anyhow!("Error parsing start timestamp: {e}"))?
+    } else if let Some(start_time) = start_time {
+        let start_time = Local.datetime_from_str(&start_time, "%Y-%m-%d %H:%M:%S")?;
+        wasmbus_rpc::Timestamp::new(start_time.timestamp(), start_time.timestamp_subsec_nanos())
+            .map_err(|e| anyhow!("Error parsing start time: {e}"))?
+    } else {
+        wasmbus_rpc::Timestamp::new(1681490325, 0).map_err(|e| anyhow!("It's all my fault"))?
+    };
+
+    let end = if let Some(end_time) = end_timestamp {
+        wasmbus_rpc::Timestamp::new(end_time, 0)
+            .map_err(|e| anyhow!("Error parsing end timestamp: {e}"))?
+    } else if let Some(end_time) = end_time {
+        let end_time = Local.datetime_from_str(&end_time, "%Y-%m-%d %H:%M:%S")?;
+        wasmbus_rpc::Timestamp::new(end_time.timestamp(), end_time.timestamp_subsec_nanos())
+            .map_err(|e| anyhow!("Error parsing end time: {e}"))?
+    } else {
+        wasmbus_rpc::Timestamp::now()
+    };
     let client = reqwest::blocking::Client::new();
     let res = client
-        .post(format!("{}/{}", URL, REPORTS))
-        // TODO: handle request
-        // .json(&json!({
-        //     "jwt": jwt,
-        //     "targets": targets,
-        //     "start_time": start_time,
-        //     "end_time": end_time,
-        //     "start_timestamp": start_timestamp,
-        //     "end_timestamp": end_timestamp,
-        // }))
+        .get(format!("{}/{}", URL, REPORTS))
+        .bearer_auth(jwt)
+        .json(&json!({
+            "target": targets,
+            "startTimestamp": start,
+            "endTimestamp": end,
+        }))
         .send()?;
 
-    // TODO: handle response
+    if !res.status().is_success() {
+        anyhow::bail!("Failed to get reports: {}", res.status());
+    } else {
+        let body: Vec<u8> = res.json()?;
+        let s = std::str::from_utf8(&body)?;
+        let reports: serde_json::Value = serde_json::from_str(s)?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&reports)?.to_colored_json_auto()?
+        );
+    }
+
+    // TODO: option to write to file
 
     Ok(())
 }
 
-fn handle_auth_response(res: reqwest::blocking::Response, output_jwt: bool) -> CliResult<Option<String>> {
+fn handle_auth_response(
+    res: reqwest::blocking::Response,
+    output_jwt: bool,
+) -> CliResult<Option<String>> {
     if !res.status().is_success() {
         anyhow::bail!("Authentication failed: {}", res.text()?);
     }
